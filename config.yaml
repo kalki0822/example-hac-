@@ -1,0 +1,50 @@
+project:
+  name: "Vitals — Hospital Readmission Risk Platform"
+  version: "1.0.0"
+
+data:
+  raw_path: "data/raw/hospital_readmissions.csv"
+  processed_path: "data/processed/processed_readmissions.csv"
+  target_col: "readmitted"
+  synthetic_sample_size: 5000
+  random_seed: 42
+
+features:
+  numerical:
+    - "time_in_hospital"
+    - "n_procedures"
+    - "n_lab_procedures"
+    - "n_medications"
+    - "n_outpatient"
+    - "n_inpatient"
+    - "n_emergency"
+    - "utilization_score"
+    - "care_intensity"
+    - "diagnosis_risk_score"
+    - "age_utilization_interaction"
+  categorical:
+    - "age"
+    - "medical_specialty"
+    - "diag_1"
+    - "diag_2"
+    - "diag_3"
+    - "glucose_test"
+    - "A1Ctest"
+    - "change"
+    - "diabetes_med"
+    - "diagnosis_risk_bucket"
+
+cost_matrix:
+  cost_fn: 5.0  # Missed readmission cost (False Negative)
+  cost_fp: 1.0  # Unnecessary intervention cost (False Positive)
+
+cross_validation:
+  n_splits: 5
+  random_state: 42
+
+output:
+  model_dir: "models"
+  best_model_path: "models/best_model.pkl"
+  metadata_path: "models/model_metadata.json"
+  figures_dir: "reports/figures"
+  shap_summary_path: "reports/figures/shap_summary.png"

@@ -1,0 +1,210 @@
+{
+  "model_name": "LogisticRegression",
+  "version": "1.0.0",
+  "timestamp": "2026-08-14T00:59:14.718181",
+  "gradient_boosting_backend": "LightGBM",
+  "dataset_rows": 25000,
+  "target_distribution": {
+    "negative_0_no": 13246,
+    "positive_1_yes": 11754
+  },
+  "optimal_threshold": 0.2562311557788945,
+  "cost_parameters": {
+    "cost_fn": 5.0,
+    "cost_fp": 1.0
+  },
+  "evaluation_metrics_oof": {
+    "threshold": 0.2562311557788945,
+    "roc_auc": 0.6473922954925975,
+    "pr_auc": 0.6254312124238084,
+    "f1_score": 0.6408296943231441,
+    "recall_positive": 0.9988089161136634,
+    "precision_positive": 0.47175118540544886,
+    "confusion_matrix": {
+      "tn": 100,
+      "fp": 13146,
+      "fn": 14,
+      "tp": 11740
+    },
+    "total_cost": 13216.0,
+    "avg_cost_per_patient": 0.52864
+  },
+  "roc_curve_points": [
+    {
+      "fpr": 0.0,
+      "tpr": 0.0
+    },
+    {
+      "fpr": 0.0426,
+      "tpr": 0.1444
+    },
+    {
+      "fpr": 0.0947,
+      "tpr": 0.2393
+    },
+    {
+      "fpr": 0.1463,
+      "tpr": 0.3203
+    },
+    {
+      "fpr": 0.2007,
+      "tpr": 0.3996
+    },
+    {
+      "fpr": 0.2602,
+      "tpr": 0.4703
+    },
+    {
+      "fpr": 0.3233,
+      "tpr": 0.5403
+    },
+    {
+      "fpr": 0.3889,
+      "tpr": 0.6006
+    },
+    {
+      "fpr": 0.4574,
+      "tpr": 0.6628
+    },
+    {
+      "fpr": 0.5365,
+      "tpr": 0.7242
+    },
+    {
+      "fpr": 0.6163,
+      "tpr": 0.7829
+    },
+    {
+      "fpr": 0.7029,
+      "tpr": 0.8426
+    },
+    {
+      "fpr": 0.7935,
+      "tpr": 0.8983
+    },
+    {
+      "fpr": 0.8889,
+      "tpr": 0.9507
+    },
+    {
+      "fpr": 1.0,
+      "tpr": 1.0
+    }
+  ],
+  "all_model_results_oof": {
+    "LogisticRegression": {
+      "threshold": 0.2562311557788945,
+      "roc_auc": 0.6473922954925975,
+      "pr_auc": 0.6254312124238084,
+      "f1_score": 0.6408296943231441,
+      "recall_positive": 0.9988089161136634,
+      "precision_positive": 0.47175118540544886,
+      "confusion_matrix": {
+        "tn": 100,
+        "fp": 13146,
+        "fn": 14,
+        "tp": 11740
+      },
+      "total_cost": 13216.0,
+      "avg_cost_per_patient": 0.52864
+    },
+    "RandomForest": {
+      "threshold": 0.06417085427135678,
+      "roc_auc": 0.6394847519758757,
+      "pr_auc": 0.6092803805128615,
+      "f1_score": 0.6396908759422025,
+      "recall_positive": 1.0,
+      "precision_positive": 0.470254050810162,
+      "confusion_matrix": {
+        "tn": 5,
+        "fp": 13241,
+        "fn": 0,
+        "tp": 11754
+      },
+      "total_cost": 13241.0,
+      "avg_cost_per_patient": 0.52964
+    },
+    "LightGBM": {
+      "threshold": 0.12819095477386935,
+      "roc_auc": 0.6532240906112681,
+      "pr_auc": 0.6273169943149867,
+      "f1_score": 0.6398932694402091,
+      "recall_positive": 0.9997447677386422,
+      "precision_positive": 0.47052935052454553,
+      "confusion_matrix": {
+        "tn": 23,
+        "fp": 13223,
+        "fn": 3,
+        "tp": 11751
+      },
+      "total_cost": 13238.0,
+      "avg_cost_per_patient": 0.52952
+    }
+  },
+  "num_features_raw": 16,
+  "num_features_engineered": 21,
+  "num_transformed_features": 61,
+  "feature_names_transformed": [
+    "time_in_hospital",
+    "n_procedures",
+    "n_lab_procedures",
+    "n_medications",
+    "n_outpatient",
+    "n_inpatient",
+    "n_emergency",
+    "utilization_score",
+    "care_intensity",
+    "diagnosis_risk_score",
+    "age_utilization_interaction",
+    "age_[40-50)",
+    "age_[50-60)",
+    "age_[60-70)",
+    "age_[70-80)",
+    "age_[80-90)",
+    "age_[90-100)",
+    "medical_specialty_Cardiology",
+    "medical_specialty_Emergency/Trauma",
+    "medical_specialty_Family/GeneralPractice",
+    "medical_specialty_InternalMedicine",
+    "medical_specialty_Missing",
+    "medical_specialty_Other",
+    "medical_specialty_Surgery",
+    "diag_1_Circulatory",
+    "diag_1_Diabetes",
+    "diag_1_Digestive",
+    "diag_1_Injury",
+    "diag_1_Missing",
+    "diag_1_Musculoskeletal",
+    "diag_1_Other",
+    "diag_1_Respiratory",
+    "diag_2_Circulatory",
+    "diag_2_Diabetes",
+    "diag_2_Digestive",
+    "diag_2_Injury",
+    "diag_2_Missing",
+    "diag_2_Musculoskeletal",
+    "diag_2_Other",
+    "diag_2_Respiratory",
+    "diag_3_Circulatory",
+    "diag_3_Diabetes",
+    "diag_3_Digestive",
+    "diag_3_Injury",
+    "diag_3_Missing",
+    "diag_3_Musculoskeletal",
+    "diag_3_Other",
+    "diag_3_Respiratory",
+    "glucose_test_high",
+    "glucose_test_no",
+    "glucose_test_normal",
+    "A1Ctest_high",
+    "A1Ctest_no",
+    "A1Ctest_normal",
+    "change_no",
+    "change_yes",
+    "diabetes_med_no",
+    "diabetes_med_yes",
+    "diagnosis_risk_bucket_High",
+    "diagnosis_risk_bucket_Low",
+    "diagnosis_risk_bucket_Medium"
+  ]
+}
