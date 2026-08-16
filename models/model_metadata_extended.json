@@ -1,0 +1,115 @@
+{
+  "model_name": "LightGBM_Extended",
+  "model_version": "1.0.0",
+  "is_production": false,
+  "training_date": "2026-08-16T17:22:38.327819",
+  "dataset_name": "diabetic_data.csv",
+  "dataset_hash": "0689e7ec031237dc63031b938805c48377748761a3b26acab621567afa24df97",
+  "row_count": 101766,
+  "unique_patients": 71518,
+  "repeated_encounters": 30248,
+  "model_sha256": "03c4d13bde654d6b91b004a59770318c1512efb0e490792ff982c0ef248e0cfb",
+  "features": [
+    "time_in_hospital",
+    "n_lab_procedures",
+    "n_procedures",
+    "n_medications",
+    "n_outpatient",
+    "n_inpatient",
+    "n_emergency",
+    "number_diagnoses",
+    "age",
+    "race",
+    "gender",
+    "medical_specialty",
+    "admission_type_id",
+    "discharge_disposition_id",
+    "admission_source_id",
+    "diag_1",
+    "diag_2",
+    "diag_3",
+    "glucose_test",
+    "A1Ctest",
+    "change",
+    "diabetes_med"
+  ],
+  "categorical_features": [
+    "age",
+    "race",
+    "gender",
+    "medical_specialty",
+    "admission_type_id",
+    "discharge_disposition_id",
+    "admission_source_id",
+    "diag_1",
+    "diag_2",
+    "diag_3",
+    "glucose_test",
+    "A1Ctest",
+    "change",
+    "diabetes_med"
+  ],
+  "class_mapping": {
+    "0": "NOT READMITTED",
+    "1": "READMITTED"
+  },
+  "training_parameters": {
+    "objective": "binary",
+    "metric": "auc",
+    "n_estimators": 300,
+    "learning_rate": 0.05,
+    "num_leaves": 31,
+    "random_state": 42,
+    "verbose": -1
+  },
+  "cv_method": "StratifiedGroupKFold (n_splits=5, groups=patient_nbr)",
+  "oof_metrics": {
+    "roc_auc": 0.7077,
+    "pr_auc": 0.6655,
+    "accuracy": 0.6474,
+    "precision": 0.6106,
+    "recall": 0.6486,
+    "f1": 0.629,
+    "specificity": 0.6464,
+    "brier_score": 0.2154,
+    "log_loss": 0.6171
+  },
+  "tier_statistics": {
+    "Minimal Risk": {
+      "count": 25442,
+      "percentage": 25.0,
+      "mean_probability": 0.2406,
+      "median_probability": 0.2631,
+      "actual_readmissions": 5806,
+      "actual_readmission_rate": 22.82
+    },
+    "Moderate Risk": {
+      "count": 25441,
+      "percentage": 25.0,
+      "mean_probability": 0.3975,
+      "median_probability": 0.3982,
+      "actual_readmissions": 10183,
+      "actual_readmission_rate": 40.03
+    },
+    "Elevated Risk": {
+      "count": 25441,
+      "percentage": 25.0,
+      "mean_probability": 0.5168,
+      "median_probability": 0.5162,
+      "actual_readmissions": 13193,
+      "actual_readmission_rate": 51.86
+    },
+    "High Risk": {
+      "count": 25442,
+      "percentage": 25.0,
+      "mean_probability": 0.6873,
+      "median_probability": 0.6712,
+      "actual_readmissions": 17720,
+      "actual_readmission_rate": 69.65
+    }
+  },
+  "age_coverage": [
+    "min [0-10)",
+    "max [90-100)"
+  ]
+}

@@ -3,7 +3,7 @@ import { PatientRecord, PredictionResult } from '../types';
 import { predictPatient } from '../api/client';
 import { ScoreGauge } from '../components/ScoreGauge';
 import { RiskDriverBar } from '../components/RiskDriverBar';
-import { UserPlus, Sparkles, Send, RefreshCw, AlertCircle } from 'lucide-react';
+import { UserPlus, Sparkles, Send, RefreshCw, AlertCircle, ShieldAlert, CheckCircle2, Info, User } from 'lucide-react';
 
 const INITIAL_PATIENT: PatientRecord = {
   age: '[70-80)',
@@ -78,6 +78,10 @@ const CLINICAL_PRESETS = [
 
 export const NewAssessment: React.FC = () => {
   const [formData, setFormData] = useState<PatientRecord>(INITIAL_PATIENT);
+  const [patientName, setPatientName] = useState<string>('Arun Kumar');
+  const [dateOfBirth, setDateOfBirth] = useState<string>('15/08/1954');
+  const [customPatientId, setCustomPatientId] = useState<string>('');
+
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -99,7 +103,13 @@ export const NewAssessment: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await predictPatient(formData);
+      const payload = {
+        ...formData,
+        patient_name: patientName.trim() || 'Manual Patient Intake',
+        date_of_birth: dateOfBirth.trim() || 'N/A',
+        patient_id: customPatientId.trim() || undefined
+      };
+      const res = await predictPatient(payload);
       setPrediction(res);
     } catch (err: any) {
       setError(err.message || 'Failed to generate readmission risk prediction.');
@@ -118,7 +128,7 @@ export const NewAssessment: React.FC = () => {
             <h1 className="text-xl font-bold font-display text-[#12213A]">New Patient Assessment</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Input structured patient clinical parameters to calculate real-time readmission risk probability and SHAP drivers.
+            Input patient identity & clinical parameters to compute real-time readmission risk probability, SHAP drivers, and personalized preventive recommendations.
           </p>
         </div>
 
@@ -144,11 +154,46 @@ export const NewAssessment: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Form Column */}
         <form onSubmit={handleSubmit} className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <h2 className="text-sm font-bold font-display text-[#12213A] border-b border-slate-100 pb-2">
-            Patient Demographics & History
+          <h2 className="text-sm font-bold font-display text-[#12213A] border-b border-slate-100 pb-2 flex items-center gap-1.5">
+            <User className="w-4 h-4 text-purple-700" /> Patient Identity & Demographics
           </h2>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Patient Full Name</label>
+              <input
+                type="text"
+                placeholder="e.g. Arun Kumar"
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md text-xs"
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Date of Birth (DD/MM/YYYY)</label>
+              <input
+                type="text"
+                placeholder="DD/MM/YYYY"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-slate-700 mb-1">Hospital Patient ID (Optional)</label>
+              <input
+                type="text"
+                placeholder="Auto-generated if empty"
+                value={customPatientId}
+                onChange={(e) => setCustomPatientId(e.target.value)}
+                className="w-full p-2 bg-slate-50 border border-slate-200 rounded-md text-xs font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs pt-1">
             <div>
               <label className="block font-medium text-slate-700 mb-1">Age Bracket</label>
               <select
@@ -360,8 +405,15 @@ export const NewAssessment: React.FC = () => {
           {prediction ? (
             <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-5">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h2 className="text-sm font-bold font-display text-[#12213A]">Assessment Result</h2>
-                <span className="text-xs font-mono text-slate-500">Real-Data Model Output</span>
+                <div>
+                  <h2 className="text-sm font-bold font-display text-[#12213A]">Assessment Result</h2>
+                  <p className="text-[11px] text-slate-500">
+                    Patient ID: <span className="font-mono font-bold text-[#12213A]">{prediction.patient_id}</span>
+                  </p>
+                </div>
+                <span className="text-xs font-mono text-emerald-700 bg-emerald-50 px-2 py-1 rounded border border-emerald-200 font-bold">
+                  PERSISTED TO DB
+                </span>
               </div>
 
               {/* Full SVG Score Gauge */}
@@ -378,6 +430,69 @@ export const NewAssessment: React.FC = () => {
                   Top 3 SHAP Risk Drivers
                 </span>
                 <RiskDriverBar drivers={prediction.top_3_shap_drivers} />
+              </div>
+
+              {/* SUGGESTED PREVENTIVE ACTIONS SECTION */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-[#12213A]" />
+                    <h3 className="text-xs font-bold font-display text-[#12213A]">Suggested Preventive Actions</h3>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Actions for clinician consideration based on predicted risk and patient-specific factors.
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  {prediction.preventive_actions && prediction.preventive_actions.length > 0 ? (
+                    prediction.preventive_actions.map((act, i) => {
+                      const isHigh = act.priority === 'High';
+                      const isMed = act.priority === 'Medium';
+                      return (
+                        <div
+                          key={i}
+                          className={`p-3 rounded-lg border text-xs space-y-1 ${
+                            isHigh
+                              ? 'bg-red-50/50 border-red-200 text-red-900'
+                              : isMed
+                              ? 'bg-amber-50/50 border-amber-200 text-amber-900'
+                              : 'bg-slate-50 border-slate-200 text-slate-800'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between font-semibold">
+                            <span className="flex items-center gap-1.5">
+                              <CheckCircle2 className={`w-3.5 h-3.5 ${isHigh ? 'text-red-600' : isMed ? 'text-amber-600' : 'text-slate-500'}`} />
+                              {act.title}
+                            </span>
+                            <span
+                              className={`text-[10px] font-mono uppercase px-1.5 py-0.5 rounded font-bold ${
+                                isHigh
+                                  ? 'bg-red-100 text-red-800'
+                                  : isMed
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              {act.priority} Priority
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-600 font-normal pl-5">
+                            <span className="font-semibold text-slate-700">Reason: </span>
+                            {act.reason}
+                          </p>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">No specific preventive actions generated.</p>
+                  )}
+                </div>
+
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex items-start gap-1.5 text-[11px] text-slate-500">
+                  <Info className="w-3.5 h-3.5 text-slate-400 shrink-0 mt-0.5" />
+                  <span>Vitals is a clinical decision-support prototype using de-identified research data. Predictions and recommendations are decision-support suggestions for clinician consideration and are not medical diagnoses or treatment instructions.</span>
+                </div>
               </div>
             </div>
           ) : (

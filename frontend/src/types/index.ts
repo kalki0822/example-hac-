@@ -16,6 +16,11 @@ export interface PatientRecord {
   change: string;
   diabetes_med: string;
   patient_id?: string;
+  patient_name?: string;
+  date_of_birth?: string;
+  source?: string;
+  upload_id?: string;
+  source_filename?: string;
   original_row_index?: number;
   [key: string]: any;
 }
@@ -27,22 +32,37 @@ export interface SHAPDriver {
   plain_language_driver: string;
 }
 
+export interface PreventiveAction {
+  title: string;
+  reason: string;
+  priority: 'High' | 'Medium' | 'Routine';
+}
+
 export interface PredictionResult {
   readmission_probability: number;
   predicted_readmitted: 'yes' | 'no';
   operating_threshold: number;
-  clinical_risk_tier: 'Low Risk' | 'Moderate Risk' | 'High Risk';
+  clinical_risk_tier: 'Minimal Risk' | 'Moderate Risk' | 'Elevated Risk' | 'High Risk' | 'Low Risk';
   top_3_shap_drivers: SHAPDriver[];
+  preventive_actions: PreventiveAction[];
+  patient_id?: string;
+  patient_name?: string;
+  date_of_birth?: string;
 }
 
 export interface BatchPatientResult {
   patient_index: number;
   readmission_probability: number;
   predicted_readmitted: 'yes' | 'no';
-  clinical_risk_tier: 'Low Risk' | 'Moderate Risk' | 'High Risk';
+  clinical_risk_tier: 'Minimal Risk' | 'Moderate Risk' | 'Elevated Risk' | 'High Risk' | 'Low Risk';
   primary_driver?: string;
   patient_id?: string;
+  patient_name?: string;
+  date_of_birth?: string;
+  source?: string;
+  source_filename?: string;
   patient_data?: PatientRecord;
+  preventive_actions?: PreventiveAction[];
 }
 
 export interface BatchPredictionResponse {
@@ -50,6 +70,8 @@ export interface BatchPredictionResponse {
   high_risk_count: number;
   moderate_risk_count: number;
   low_risk_count: number;
+  upload_id?: string;
+  source_filename?: string;
   predictions: BatchPatientResult[];
 }
 
@@ -59,6 +81,24 @@ export interface PaginatedPatientsResponse {
   page: number;
   page_size: number;
   total_pages: number;
+  high_risk_count?: number;
+  elevated_risk_count?: number;
+  moderate_risk_count?: number;
+  minimal_risk_count?: number;
+  low_risk_count?: number;
+}
+
+export interface CSVUploadRecord {
+  upload_id: string;
+  filename: string;
+  total_patients: number;
+  high_risk_count: number;
+  elevated_risk_count?: number;
+  moderate_risk_count: number;
+  minimal_risk_count?: number;
+  low_risk_count: number;
+  uploaded_at: string;
+  user_email?: string;
 }
 
 export interface HealthResponse {

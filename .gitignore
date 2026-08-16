@@ -29,6 +29,17 @@ htmlcov/
 # Local Environment Secret files
 .env
 .env.local
+.env.*
+!.env.example
+
+# Local databases & runtime binaries
+*.db
+*.sqlite
+*.sqlite3
+vitals.db
+pgsql/
+mlruns/
+artifacts/
 
 # Temporary / Log files
 *.log

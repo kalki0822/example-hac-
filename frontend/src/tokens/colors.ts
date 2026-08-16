@@ -7,19 +7,26 @@ export const COLOR_TOKENS = {
   borderDark: '#CBD5E1',
 
   riskTiers: {
-    low: {
-      color: '#475569',
-      bg: '#F1F5F9',
-      border: '#CBD5E1',
-      gaugeStroke: '#64748B',
-      label: 'Low Risk'
+    minimal: {
+      color: '#065F46',
+      bg: '#D1FAE5',
+      border: '#6EE7B7',
+      gaugeStroke: '#059669',
+      label: 'Minimal Risk'
     },
     moderate: {
-      color: '#B45309',
-      bg: '#FEF3C7',
-      border: '#FDE68A',
-      gaugeStroke: '#D97706',
+      color: '#1E40AF',
+      bg: '#DBEAFE',
+      border: '#93C5FD',
+      gaugeStroke: '#2563EB',
       label: 'Moderate Risk'
+    },
+    elevated: {
+      color: '#92400E',
+      bg: '#FEF3C7',
+      border: '#FCD34D',
+      gaugeStroke: '#D97706',
+      label: 'Elevated Risk'
     },
     high: {
       color: '#991B1B',
@@ -40,10 +47,11 @@ export const COLOR_TOKENS = {
   }
 } as const;
 
-export type RiskTierKey = 'Low Risk' | 'Moderate Risk' | 'High Risk';
+export type RiskTierKey = 'Minimal Risk' | 'Moderate Risk' | 'Elevated Risk' | 'High Risk' | 'Low Risk';
 
 export function getRiskTierTheme(tier: string) {
   if (tier === 'High Risk') return COLOR_TOKENS.riskTiers.high;
+  if (tier === 'Elevated Risk') return COLOR_TOKENS.riskTiers.elevated;
   if (tier === 'Moderate Risk') return COLOR_TOKENS.riskTiers.moderate;
-  return COLOR_TOKENS.riskTiers.low;
+  return COLOR_TOKENS.riskTiers.minimal;
 }

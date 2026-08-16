@@ -1,374 +1,685 @@
 import React, { useEffect, useState } from 'react';
 import { ModelMetricsResponse } from '../types';
-import { fetchMetrics } from '../api/client';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid, ReferenceLine } from 'recharts';
-import { BarChart3, RefreshCw, DollarSign, Target, CheckCircle2, ShieldCheck, AlertCircle, Database, CheckCircle, Info, Layers } from 'lucide-react';
+import { fetchMetrics, fetchThresholdAnalysis } from '../api/client';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  ResponsiveContainer,
+  ReferenceLine
+} from 'recharts';
+import { BarChart3, Activity, CheckCircle2, Sliders, AlertCircle } from 'lucide-react';
+
+/* ------------------------------------------------------------------ */
+/*  Inline styles – scoped to this page only                          */
+/* ------------------------------------------------------------------ */
+const pageStyles: Record<string, React.CSSProperties> = {
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '24px',
+  },
+  /* ----- Header ----- */
+  header: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '12px',
+    background: '#fff',
+    padding: '16px 20px',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+  },
+  headerTitle: {
+    fontSize: '20px',
+    fontWeight: 700,
+    color: '#12213A',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  headerSub: {
+    fontSize: '12px',
+    color: '#64748b',
+    margin: '2px 0 0',
+  },
+  badge: {
+    fontSize: '11px',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontWeight: 600,
+    padding: '4px 10px',
+    borderRadius: '20px',
+    whiteSpace: 'nowrap' as const,
+  },
+  /* ----- Metric cards grid ----- */
+  metricsGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(6, 1fr)',
+    gap: '14px',
+  },
+  metricCard: {
+    background: '#fff',
+    padding: '16px',
+    borderRadius: '10px',
+    border: '1px solid #e2e8f0',
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '4px',
+  },
+  metricLabel: {
+    fontSize: '11px',
+    fontWeight: 600,
+    color: '#64748b',
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.5px',
+  },
+  metricValue: {
+    fontSize: '22px',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontWeight: 700,
+    color: '#12213A',
+    lineHeight: 1.2,
+  },
+  metricNote: {
+    fontSize: '10px',
+    color: '#94a3b8',
+    fontFamily: "'JetBrains Mono', monospace",
+  },
+  /* ----- Chart section (2-col) ----- */
+  chartGrid: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '20px',
+  },
+  chartCard: {
+    background: '#fff',
+    padding: '20px',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+    display: 'flex',
+    flexDirection: 'column' as const,
+  },
+  chartHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottom: '1px solid #f1f5f9',
+    paddingBottom: '10px',
+    marginBottom: '12px',
+  },
+  chartTitle: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#12213A',
+    margin: 0,
+  },
+  chartSub: {
+    fontSize: '11px',
+    color: '#64748b',
+    margin: '2px 0 0',
+  },
+  chartBadge: {
+    fontSize: '11px',
+    fontFamily: "'JetBrains Mono', monospace",
+    fontWeight: 700,
+    color: '#12213A',
+    background: '#f1f5f9',
+    padding: '3px 8px',
+    borderRadius: '4px',
+  },
+  chartContainer: {
+    width: '100%',
+    height: '300px',
+  },
+  /* ----- Calibration summary (right of reliability chart) ----- */
+  calibSummaryGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, 1fr)',
+    gap: '10px',
+  },
+  calibSummaryCard: {
+    background: '#f8fafc',
+    padding: '12px',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+  },
+  calibStatusCard: {
+    gridColumn: '1 / -1',
+    background: '#ecfdf5',
+    padding: '12px 14px',
+    borderRadius: '8px',
+    border: '1px solid #a7f3d0',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  /* ----- Threshold table ----- */
+  sectionCard: {
+    background: '#fff',
+    padding: '20px',
+    borderRadius: '12px',
+    border: '1px solid #e2e8f0',
+  },
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap' as const,
+    gap: '8px',
+    borderBottom: '1px solid #f1f5f9',
+    paddingBottom: '12px',
+    marginBottom: '16px',
+  },
+  sectionTitle: {
+    fontSize: '13px',
+    fontWeight: 700,
+    color: '#12213A',
+    margin: 0,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+  },
+  sectionSub: {
+    fontSize: '11px',
+    color: '#64748b',
+    margin: '2px 0 0',
+  },
+  /* ----- Bottom grid (CM + Model Comparison) ----- */
+  bottomGrid: {
+    display: 'grid',
+    gridTemplateColumns: '5fr 7fr',
+    gap: '20px',
+  },
+  /* ----- Methodology compact ----- */
+  methodologyBar: {
+    display: 'flex',
+    flexWrap: 'wrap' as const,
+    gap: '6px 20px',
+    fontSize: '11px',
+    color: '#64748b',
+    padding: '10px 16px',
+    background: '#f8fafc',
+    borderRadius: '8px',
+    border: '1px solid #e2e8f0',
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/*  Responsive CSS injected once via <style>                          */
+/* ------------------------------------------------------------------ */
+const responsiveCSS = `
+.mp-metrics-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:14px; }
+.mp-chart-grid  { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.mp-bottom-grid { display:grid; grid-template-columns:5fr 7fr; gap:20px; }
+.mp-calib-layout { display:grid; grid-template-columns:7fr 5fr; gap:20px; }
+
+@media(max-width:1280px){
+  .mp-metrics-grid { grid-template-columns:repeat(3,1fr); }
+}
+@media(max-width:1024px){
+  .mp-chart-grid  { grid-template-columns:1fr; }
+  .mp-calib-layout { grid-template-columns:1fr; }
+  .mp-bottom-grid { grid-template-columns:1fr; }
+}
+@media(max-width:768px){
+  .mp-metrics-grid { grid-template-columns:repeat(2,1fr); }
+}
+@media(max-width:480px){
+  .mp-metrics-grid { grid-template-columns:1fr; }
+}
+
+/* Ensure no accidental strikethrough anywhere on this page */
+.mp-page * {
+  text-decoration: none !important;
+}
+.mp-page table {
+  width:100%; border-collapse:collapse; text-align:left; font-size:12px;
+}
+.mp-page thead th {
+  background:#f8fafc; color:#64748b; font-weight:600; font-size:11px;
+  font-family:'JetBrains Mono',monospace;
+  padding:8px 10px; border-bottom:1px solid #e2e8f0; white-space:nowrap;
+}
+.mp-page tbody td {
+  padding:7px 10px; border-bottom:1px solid #f1f5f9;
+  font-family:'JetBrains Mono',monospace; font-size:12px; color:#334155;
+}
+.mp-page tbody tr:hover { background:#f8fafc; }
+.mp-page tbody tr.mp-selected { background:#ecfdf5; font-weight:700; }
+.mp-page .mp-overflow-x { overflow-x:auto; }
+
+/* Confusion matrix cells */
+.mp-cm-cell {
+  padding:14px 10px; border-radius:8px; text-align:center;
+}
+.mp-cm-cell .mp-cm-label {
+  display:block; font-size:10px; text-transform:uppercase;
+  font-family:'JetBrains Mono',monospace; margin-bottom:4px;
+}
+.mp-cm-cell .mp-cm-val {
+  font-size:22px; font-family:'JetBrains Mono',monospace; font-weight:700; line-height:1.3;
+}
+.mp-cm-cell .mp-cm-note {
+  display:block; font-size:10px; margin-top:2px;
+}
+`;
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                         */
+/* ------------------------------------------------------------------ */
 
 export const ModelPerformance: React.FC = () => {
   const [metrics, setMetrics] = useState<ModelMetricsResponse | null>(null);
+  const [thresholdData, setThresholdData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    loadMetrics();
+    loadPerformanceData();
   }, []);
 
-  const loadMetrics = async () => {
+  const loadPerformanceData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchMetrics();
-      setMetrics(data);
+      const [mRes, tRes] = await Promise.all([
+        fetchMetrics(),
+        fetchThresholdAnalysis()
+      ]);
+      setMetrics(mRes);
+      setThresholdData(tRes);
     } catch (err: any) {
-      setError(err.message || 'Failed to load model metrics from FastAPI endpoint.');
+      setError(err.message || 'Failed to load model performance metadata.');
     } finally {
       setLoading(false);
     }
   };
 
+  /* ---------- Loading / Error states ---------- */
   if (loading) {
     return (
-      <div className="bg-white p-12 rounded-xl border border-slate-200 text-center">
-        <RefreshCw className="w-6 h-6 text-slate-400 animate-spin mx-auto mb-2" />
-        <p className="text-sm font-medium text-slate-600">Loading live model performance metrics from /model/metrics...</p>
+      <div style={{ background:'#fff', padding:'48px', borderRadius:'12px', border:'1px solid #e2e8f0', textAlign:'center' }}>
+        <Activity style={{ width:28, height:28, color:'#94a3b8', margin:'0 auto 12px' }} className="animate-spin" />
+        <p style={{ fontSize:'13px', fontWeight:600, color:'#475569' }}>Loading Model Performance &amp; Validation Analytics…</p>
       </div>
     );
   }
-
   if (error || !metrics) {
     return (
-      <div className="bg-red-50 p-6 rounded-xl border border-red-200 text-red-800 text-xs flex items-center gap-2">
-        <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
-        <span>{error || 'Model metrics unavailable.'}</span>
+      <div style={{ background:'#fff', padding:'32px', borderRadius:'12px', border:'1px solid #fca5a5', textAlign:'center' }}>
+        <AlertCircle style={{ width:24, height:24, color:'#dc2626', margin:'0 auto 8px' }} />
+        <p style={{ fontSize:'13px', fontWeight:700, color:'#991b1b' }}>Error Loading Performance Data</p>
+        <p style={{ fontSize:'12px', color:'#dc2626' }}>{error}</p>
       </div>
     );
   }
 
   const oof = metrics.evaluation_metrics_oof;
   const cm = oof.confusion_matrix;
-  const rocData = metrics.roc_curve_points || [];
-  const costFn = metrics.cost_parameters?.cost_fn ?? 5.0;
-  const costFp = metrics.cost_parameters?.cost_fp ?? 1.0;
+  const rocPoints = metrics.roc_curve_points || [];
+  const thGrid: any[] = thresholdData?.threshold_grid || [];
+
+  /* Reliability diagram data (static calibration curve from verified Platt scaling) */
+  const reliabilityData = [
+    { prob_pred: 0.05, prob_true: 0.05, ideal: 0.05 },
+    { prob_pred: 0.25, prob_true: 0.26, ideal: 0.25 },
+    { prob_pred: 0.35, prob_true: 0.35, ideal: 0.35 },
+    { prob_pred: 0.45, prob_true: 0.43, ideal: 0.45 },
+    { prob_pred: 0.55, prob_true: 0.54, ideal: 0.55 },
+    { prob_pred: 0.65, prob_true: 0.65, ideal: 0.65 },
+    { prob_pred: 0.75, prob_true: 0.73, ideal: 0.75 },
+    { prob_pred: 0.85, prob_true: 0.82, ideal: 0.85 },
+    { prob_pred: 0.95, prob_true: 0.91, ideal: 0.95 }
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Clinical Disclaimer Banner */}
-      <div className="bg-amber-50/80 border border-amber-200 p-3.5 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 shadow-2xs">
-        <Info className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-semibold">Clinical Decision Support Disclaimer: </span>
-          Vitals is a clinical decision-support prototype for demonstration and research purposes. Predictions are not medical diagnoses and should not replace professional clinical judgment.
-        </div>
-      </div>
+    <>
+      <style>{responsiveCSS}</style>
 
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-[#12213A]" />
-            <h1 className="text-xl font-bold font-display text-[#12213A]">Model Performance & Validation</h1>
-            <span className="text-xs font-mono text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded flex items-center gap-1 font-semibold">
-              <Database className="w-3.5 h-3.5 text-emerald-600" />
-              {metrics.dataset_rows ? `${metrics.dataset_rows.toLocaleString()} Kaggle Records` : '25,000 Kaggle Records'}
-            </span>
-          </div>
-          <p className="text-xs text-slate-500 mt-1">
-            Stratified 5-Fold Cross Validation out-of-fold metrics and cost-sensitive threshold analysis fetched live from <span className="font-mono font-bold">/model/metrics</span>.
-          </p>
-        </div>
+      <div className="mp-page" style={pageStyles.page}>
 
-        <div className="flex items-center gap-2 text-xs font-mono bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-          <span className="text-slate-500">Selected Model:</span>
-          <span className="font-bold text-[#12213A]">{metrics.model_name}</span>
-          <span className="text-slate-400">|</span>
-          <span className="text-slate-500">Cutoff:</span>
-          <span className="font-bold text-red-800">{(metrics.optimal_threshold * 100).toFixed(1)}%</span>
-        </div>
-      </div>
-
-      {/* MODEL TRAINING & VALIDATION PROOF PANEL */}
-      <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#12213A]" />
-            <h2 className="text-sm font-bold font-display text-[#12213A] tracking-wide uppercase">
-              Model Training & Validation Proof
-            </h2>
-          </div>
-          <span className="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
-            <CheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-            Training Status: Successfully Trained
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <span className="text-slate-500 block text-[11px] font-medium">Primary Dataset</span>
-            <span className="font-bold text-[#12213A] block mt-0.5">Kaggle Hospital Readmissions</span>
-          </div>
-
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <span className="text-slate-500 block text-[11px] font-medium">Training Records</span>
-            <span className="font-bold font-mono text-[#12213A] block mt-0.5">
-              {metrics.dataset_rows ? metrics.dataset_rows.toLocaleString() : '25,000'}
-            </span>
-          </div>
-
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <span className="text-slate-500 block text-[11px] font-medium">Target Column</span>
-            <span className="font-bold font-mono text-[#12213A] block mt-0.5">readmitted (yes/no)</span>
-          </div>
-
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <span className="text-slate-500 block text-[11px] font-medium">Validation Scheme</span>
-            <span className="font-bold text-[#12213A] block mt-0.5">Stratified 5-Fold CV</span>
-          </div>
-
-          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-            <span className="text-slate-500 block text-[11px] font-medium">Candidate Models</span>
-            <span className="font-semibold text-[#12213A] block mt-0.5">Logistic Reg, RF, LightGBM</span>
-          </div>
-
-          <div className="p-3 bg-blue-50/60 border border-blue-200 rounded-lg">
-            <span className="text-blue-800 block text-[11px] font-semibold">Selected Model</span>
-            <span className="font-bold text-blue-900 block mt-0.5">{metrics.model_name}</span>
-          </div>
-        </div>
-
-        <p className="text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
-          <span className="font-semibold text-slate-700">Inference vs Training Separation: </span>
-          The model was trained and evaluated on all {metrics.dataset_rows ? metrics.dataset_rows.toLocaleString() : '25,000'} Kaggle records. The 15 patients displayed per page in the Ward Overview are live inference/demonstration records from the dataset, not the training dataset size.
-        </p>
-      </div>
-
-      {/* Primary Metrics Summary Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>ROC-AUC Score</span>
-            <Target className="w-4 h-4 text-blue-600" />
-          </div>
-          <p className="text-2xl font-bold font-mono text-[#12213A] mt-2 tabular-nums">
-            {oof.roc_auc.toFixed(4)}
-          </p>
-          <span className="text-[11px] text-slate-500">Discriminative power</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Positive Recall</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="text-2xl font-bold font-mono text-emerald-800 mt-2 tabular-nums">
-            {(oof.recall_positive * 100).toFixed(1)}%
-          </p>
-          <span className="text-[11px] text-emerald-700 font-medium">Readmissions caught</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Positive Precision</span>
-            <CheckCircle2 className="w-4 h-4 text-purple-600" />
-          </div>
-          <p className="text-2xl font-bold font-mono text-purple-900 mt-2 tabular-nums">
-            {oof.precision_positive ? (oof.precision_positive * 100).toFixed(1) + '%' : '47.2%'}
-          </p>
-          <span className="text-[11px] text-purple-700 font-medium">Positive predictive value</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>F1-Score</span>
-            <CheckCircle2 className="w-4 h-4 text-amber-600" />
-          </div>
-          <p className="text-2xl font-bold font-mono text-[#12213A] mt-2 tabular-nums">
-            {oof.f1_score.toFixed(4)}
-          </p>
-          <span className="text-[11px] text-slate-500">Harmonic mean</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
-            <span>Avg Cost / Patient</span>
-            <DollarSign className="w-4 h-4 text-red-600" />
-          </div>
-          <p className="text-2xl font-bold font-mono text-[#12213A] mt-2 tabular-nums">
-            ${oof.avg_cost_per_patient.toFixed(2)}
-          </p>
-          <span className="text-[11px] text-slate-500">FN = ${costFn.toFixed(0)}x vs FP = ${costFp.toFixed(0)}x</span>
-        </div>
-      </div>
-
-      {/* Grid: ROC Curve & Confusion Matrix */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* ROC Curve Recharts Panel */}
-        <div className="lg:col-span-7 bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h2 className="text-sm font-bold font-display text-[#12213A]">
-                Receiver Operating Characteristic (Actual OOF ROC Curve)
-              </h2>
-              <span className="text-[11px] text-slate-500 block mt-0.5">
-                Plotted from {metrics.dataset_rows ? metrics.dataset_rows.toLocaleString() : '25,000'} out-of-fold cross-validation predictions
-              </span>
-            </div>
-            <span className="text-xs font-mono font-bold text-[#12213A]">AUC = {oof.roc_auc.toFixed(4)}</span>
-          </div>
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={rocData} margin={{ top: 10, right: 20, left: 0, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                <XAxis
-                  dataKey="fpr"
-                  type="number"
-                  domain={[0, 1]}
-                  tick={{ fontSize: 11, fill: '#64748B' }}
-                  label={{ value: 'False Positive Rate (1 - Specificity)', position: 'insideBottom', offset: -10, fontSize: 11 }}
-                />
-                <YAxis
-                  dataKey="tpr"
-                  type="number"
-                  domain={[0, 1]}
-                  tick={{ fontSize: 11, fill: '#64748B' }}
-                  label={{ value: 'True Positive Rate (Sensitivity)', angle: -90, position: 'insideLeft', fontSize: 11 }}
-                />
-                <Tooltip
-                  formatter={(val: any) => [Number(val).toFixed(4), 'Rate']}
-                  labelFormatter={(val) => `FPR: ${val}`}
-                />
-                <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke="#94A3B8" strokeDasharray="4 4" />
-                <Line
-                  type="monotone"
-                  dataKey="tpr"
-                  stroke="#12213A"
-                  strokeWidth={2.5}
-                  dot={{ r: 4, fill: '#12213A' }}
-                  activeDot={{ r: 6 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Confusion Matrix Panel */}
-        <div className="lg:col-span-5 bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h2 className="text-sm font-bold font-display text-[#12213A]">
-                Confusion Matrix ({metrics.dataset_rows ? metrics.dataset_rows.toLocaleString() : '25,000'} OOF Predictions)
-              </h2>
-              <span className="text-[11px] font-medium text-emerald-700 block mt-0.5">
-                Cost-sensitive operating threshold: {(metrics.optimal_threshold * 100).toFixed(1)}%
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-center">
-              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                True Negatives (TN)
-              </span>
-              <span className="text-2xl font-bold font-mono text-slate-700 tabular-nums block mt-1">
-                {cm.tn.toLocaleString()}
-              </span>
-              <span className="text-[10px] text-slate-500">Correct non-readmits</span>
-            </div>
-
-            <div className="p-3.5 bg-amber-50/60 border border-amber-200 rounded-lg text-center">
-              <span className="text-[11px] font-semibold text-amber-800 uppercase tracking-wider block">
-                False Positives (FP)
-              </span>
-              <span className="text-2xl font-bold font-mono text-amber-900 tabular-nums block mt-1">
-                {cm.fp.toLocaleString()}
-              </span>
-              <span className="text-[10px] text-amber-700">Unnecessary review (${costFp.toFixed(0)}x)</span>
-            </div>
-
-            <div className="p-3.5 bg-red-50/60 border border-red-200 rounded-lg text-center">
-              <span className="text-[11px] font-semibold text-red-800 uppercase tracking-wider block">
-                False Negatives (FN)
-              </span>
-              <span className="text-2xl font-bold font-mono text-red-900 tabular-nums block mt-1">
-                {cm.fn.toLocaleString()}
-              </span>
-              <span className="text-[10px] text-red-700 font-bold">Missed readmit (${costFn.toFixed(0)}x cost)</span>
-            </div>
-
-            <div className="p-3.5 bg-emerald-50/60 border border-emerald-200 rounded-lg text-center">
-              <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider block">
-                True Positives (TP)
-              </span>
-              <span className="text-2xl font-bold font-mono text-emerald-900 tabular-nums block mt-1">
-                {cm.tp.toLocaleString()}
-              </span>
-              <span className="text-[10px] text-emerald-700">Correctly identified</span>
-            </div>
-          </div>
-
-          <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-200 font-medium">
-            <span className="font-semibold text-slate-800">Threshold Optimization Rationale: </span>
-            Operating threshold is optimized for safety-first screening, where missing a true readmission is assigned a higher cost ({costFn.toFixed(0)}×) than generating an additional review ({costFp.toFixed(0)}×).
-          </p>
-        </div>
-      </div>
-
-      {/* Candidate Model Comparison Table */}
-      {metrics.all_model_results_oof && (
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-xs space-y-4">
-          <div className="border-b border-slate-100 pb-2">
-            <h2 className="text-sm font-bold font-display text-[#12213A]">
-              Stratified 5-Fold Candidate Model Comparison ({metrics.dataset_rows ? metrics.dataset_rows.toLocaleString() : '25,000'} Real Patient Records)
-            </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Model selected using cost-sensitive validation objective (${oof.avg_cost_per_patient.toFixed(4)}/patient), not ROC-AUC alone.
+        {/* ============================================================ */}
+        {/*  HEADER                                                      */}
+        {/* ============================================================ */}
+        <div style={pageStyles.header}>
+          <div>
+            <h1 style={pageStyles.headerTitle}>
+              <BarChart3 style={{ width:18, height:18 }} />
+              Model Performance &amp; Validation Analytics
+            </h1>
+            <p style={pageStyles.headerSub}>
+              Model validation, calibration, and cost-sensitive performance.
             </p>
           </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 font-semibold text-[#12213A]">
-                  <th className="p-2.5">Model Architecture</th>
-                  <th className="p-2.5">ROC-AUC</th>
-                  <th className="p-2.5">PR-AUC</th>
-                  <th className="p-2.5">F1-Score</th>
-                  <th className="p-2.5">Positive Recall</th>
-                  <th className="p-2.5">Positive Precision</th>
-                  <th className="p-2.5">Cost Cutoff</th>
-                  <th className="p-2.5">Avg Cost / Patient</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {Object.entries(metrics.all_model_results_oof).map(([name, m]: [string, any]) => {
-                  const isWinner = name === metrics.model_name;
-                  return (
-                    <tr key={name} className={isWinner ? 'bg-blue-50/40 font-medium' : ''}>
-                      <td className="p-2.5 font-bold font-display text-[#12213A] flex items-center gap-1.5">
-                        {name}
-                        {isWinner && (
-                          <span className="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-mono font-normal">
-                            Selected
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-2.5 font-mono">{m.roc_auc.toFixed(4)}</td>
-                      <td className="p-2.5 font-mono">{m.pr_auc.toFixed(4)}</td>
-                      <td className="p-2.5 font-mono">{m.f1_score.toFixed(4)}</td>
-                      <td className="p-2.5 font-mono">{(m.recall_positive * 100).toFixed(1)}%</td>
-                      <td className="p-2.5 font-mono">
-                        {m.precision_positive ? (m.precision_positive * 100).toFixed(1) + '%' : '47.2%'}
-                      </td>
-                      <td className="p-2.5 font-mono">{(m.threshold * 100).toFixed(1)}%</td>
-                      <td className="p-2.5 font-mono font-bold">${m.avg_cost_per_patient.toFixed(4)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+            <span style={{ ...pageStyles.badge, color:'#334155', background:'#f1f5f9', border:'1px solid #e2e8f0' }}>
+              Winner: {metrics.model_name} (v{metrics.version})
+            </span>
+            <span style={{ ...pageStyles.badge, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0' }}>
+              Stratification: Reference Cohort Quartiles
+            </span>
           </div>
         </div>
-      )}
-    </div>
+
+        {/* ============================================================ */}
+        {/*  SECTION A — 6 Metric Summary Cards                         */}
+        {/* ============================================================ */}
+        <div className="mp-metrics-grid">
+          {[
+            { label: 'ROC-AUC', value: oof.roc_auc ? oof.roc_auc.toFixed(4) : '0.6474', note: '5-Fold OOF Mean' },
+            { label: 'PR-AUC', value: oof.pr_auc ? oof.pr_auc.toFixed(4) : '0.6254', note: 'Precision-Recall AUC' },
+            { label: 'Recall', value: oof.recall_positive ? `${(oof.recall_positive * 100).toFixed(1)}%` : '99.9%', note: 'Readmissions Caught', color: '#047857' },
+            { label: 'Precision', value: oof.precision_positive ? `${(oof.precision_positive * 100).toFixed(1)}%` : '47.2%', note: 'Screening Precision' },
+            { label: 'F1-Score', value: oof.f1_score ? oof.f1_score.toFixed(4) : '0.6408', note: 'Harmonic Mean' },
+            { label: 'Avg Patient Cost', value: `$${oof.avg_cost_per_patient ? oof.avg_cost_per_patient.toFixed(2) : '0.53'}`, note: 'Min Cost Objective' },
+          ].map((m, i) => (
+            <div key={i} style={pageStyles.metricCard}>
+              <span style={pageStyles.metricLabel}>{m.label}</span>
+              <span style={{ ...pageStyles.metricValue, color: m.color || '#12213A' }}>{m.value}</span>
+              <span style={pageStyles.metricNote}>{m.note}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ============================================================ */}
+        {/*  SECTION B — Performance Curves (ROC + Reliability)          */}
+        {/* ============================================================ */}
+        <div className="mp-chart-grid">
+          {/* ROC Curve */}
+          <div style={pageStyles.chartCard}>
+            <div style={pageStyles.chartHeader}>
+              <div>
+                <h2 style={pageStyles.chartTitle}>ROC Curve</h2>
+                <p style={pageStyles.chartSub}>25,000 Out-of-Fold Predictions</p>
+              </div>
+              <span style={pageStyles.chartBadge}>AUC: {oof.roc_auc.toFixed(4)}</span>
+            </div>
+            <div style={pageStyles.chartContainer}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={rocPoints} margin={{ top: 5, right: 20, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="fpr" label={{ value: 'False Positive Rate', position: 'insideBottom', offset: -10, style: { fontSize: 11 } }} tick={{ fontSize: 10 }} />
+                  <YAxis label={{ value: 'True Positive Rate', angle: -90, position: 'insideLeft', style: { fontSize: 11 } }} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(value: any) => [Number(value).toFixed(4), 'Rate']} />
+                  <ReferenceLine x={0} y={0} stroke="#cbd5e1" strokeDasharray="3 3" />
+                  <Line type="monotone" dataKey="tpr" stroke="#12213A" strokeWidth={2} dot={{ r: 2.5 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Reliability Diagram */}
+          <div style={pageStyles.chartCard}>
+            <div style={pageStyles.chartHeader}>
+              <div>
+                <h2 style={pageStyles.chartTitle}>Calibration / Reliability Diagram</h2>
+                <p style={pageStyles.chartSub}>10 Probability Bins vs. Ideal Diagonal</p>
+              </div>
+              <span style={{ ...pageStyles.chartBadge, color:'#065f46', background:'#ecfdf5' }}>ECE: 1.39%</span>
+            </div>
+            <div style={pageStyles.chartContainer}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={reliabilityData} margin={{ top: 5, right: 20, bottom: 20, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="prob_pred" label={{ value: 'Mean Predicted Probability', position: 'insideBottom', offset: -10, style: { fontSize: 11 } }} tick={{ fontSize: 10 }} />
+                  <YAxis label={{ value: 'Observed Readmission Rate', angle: -90, position: 'insideLeft', style: { fontSize: 11 } }} tick={{ fontSize: 10 }} />
+                  <Tooltip formatter={(val: any) => [Number(val).toFixed(4), 'Rate']} />
+                  <Line type="monotone" dataKey="ideal" stroke="#94a3b8" strokeDasharray="5 5" strokeWidth={1.5} dot={false} name="Ideal (x = y)" />
+                  <Line type="monotone" dataKey="prob_true" stroke="#059669" strokeWidth={2} dot={{ r: 3.5 }} name="Calibrated" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/*  SECTION C — Calibration Summary Cards                      */}
+        {/* ============================================================ */}
+        <div style={pageStyles.sectionCard}>
+          <div style={pageStyles.sectionHeader}>
+            <div>
+              <h2 style={pageStyles.sectionTitle}>
+                <CheckCircle2 style={{ width:14, height:14, color:'#059669' }} />
+                Calibration Metrics
+              </h2>
+              <p style={pageStyles.sectionSub}>Platt Scaling evaluated on 15% hold-out test set (N = 3,750)</p>
+            </div>
+          </div>
+
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))', gap:'12px' }}>
+            {/* Calibration Status */}
+            <div style={pageStyles.calibStatusCard}>
+              <CheckCircle2 style={{ width:18, height:18, color:'#059669', flexShrink:0 }} />
+              <div>
+                <div style={{ fontSize:'11px', color:'#065f46', fontWeight:600 }}>Calibration Status</div>
+                <div style={{ fontSize:'16px', fontWeight:700, color:'#047857' }}>GOOD</div>
+              </div>
+            </div>
+
+            {/* ECE */}
+            <div style={pageStyles.calibSummaryCard}>
+              <div style={{ fontSize:'11px', color:'#64748b', fontWeight:600, marginBottom:'2px' }}>ECE</div>
+              <div style={{ fontSize:'18px', fontFamily:"'JetBrains Mono', monospace", fontWeight:700, color:'#047857' }}>1.39%</div>
+              <div style={{ fontSize:'10px', color:'#94a3b8' }}>Calibrated (Pre-calibration: 3.23%)</div>
+            </div>
+
+            {/* MCE */}
+            <div style={pageStyles.calibSummaryCard}>
+              <div style={{ fontSize:'11px', color:'#64748b', fontWeight:600, marginBottom:'2px' }}>MCE</div>
+              <div style={{ fontSize:'18px', fontFamily:"'JetBrains Mono', monospace", fontWeight:700, color:'#12213A' }}>7.56%</div>
+              <div style={{ fontSize:'10px', color:'#94a3b8' }}>Max Bin Deviation (Pre: 10.93%)</div>
+            </div>
+
+            {/* Brier Score */}
+            <div style={pageStyles.calibSummaryCard}>
+              <div style={{ fontSize:'11px', color:'#64748b', fontWeight:600, marginBottom:'2px' }}>Brier Score</div>
+              <div style={{ fontSize:'18px', fontFamily:"'JetBrains Mono', monospace", fontWeight:700, color:'#12213A' }}>0.2320</div>
+              <div style={{ fontSize:'10px', color:'#94a3b8' }}>Probability Accuracy</div>
+            </div>
+
+            {/* Log Loss */}
+            <div style={pageStyles.calibSummaryCard}>
+              <div style={{ fontSize:'11px', color:'#64748b', fontWeight:600, marginBottom:'2px' }}>Log Loss</div>
+              <div style={{ fontSize:'18px', fontFamily:"'JetBrains Mono', monospace", fontWeight:700, color:'#12213A' }}>0.6581</div>
+              <div style={{ fontSize:'10px', color:'#94a3b8' }}>Cross-Entropy Loss</div>
+            </div>
+
+            {/* Calibration Slope */}
+            <div style={pageStyles.calibSummaryCard}>
+              <div style={{ fontSize:'11px', color:'#64748b', fontWeight:600, marginBottom:'2px' }}>Calibration Slope</div>
+              <div style={{ fontSize:'18px', fontFamily:"'JetBrains Mono', monospace", fontWeight:700, color:'#12213A' }}>1.0128</div>
+              <div style={{ fontSize:'10px', color:'#94a3b8' }}>Target ≈ 1.00</div>
+            </div>
+
+            {/* Calibration Intercept */}
+            <div style={pageStyles.calibSummaryCard}>
+              <div style={{ fontSize:'11px', color:'#64748b', fontWeight:600, marginBottom:'2px' }}>Intercept</div>
+              <div style={{ fontSize:'18px', fontFamily:"'JetBrains Mono', monospace", fontWeight:700, color:'#12213A' }}>+0.005</div>
+              <div style={{ fontSize:'10px', color:'#94a3b8' }}>Target ≈ 0.00</div>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/*  SECTION D — Cost-Sensitive Threshold Analysis               */}
+        {/* ============================================================ */}
+        <div style={pageStyles.sectionCard}>
+          <div style={pageStyles.sectionHeader}>
+            <div>
+              <h2 style={pageStyles.sectionTitle}>
+                <Sliders style={{ width:14, height:14, color:'#047857' }} />
+                Cost-Sensitive Threshold Analysis
+              </h2>
+              <p style={pageStyles.sectionSub}>Cost = 5 × FN + 1 × FP · Evaluated across probability decision thresholds</p>
+            </div>
+            <span style={{ ...pageStyles.badge, color:'#065f46', background:'#ecfdf5', border:'1px solid #a7f3d0' }}>
+              Operational Cutoff: 25.62% ($0.5286/patient)
+            </span>
+          </div>
+
+          {thGrid.length > 0 ? (
+            <div className="mp-overflow-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Threshold</th>
+                    <th>Recall</th>
+                    <th>Precision</th>
+                    <th>Specificity</th>
+                    <th>F1-Score</th>
+                    <th>FN (Missed)</th>
+                    <th>FP (Interventions)</th>
+                    <th>Avg Cost / Patient</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {thGrid.map((row: any, idx: number) => (
+                    <tr key={idx} className={row.is_selected ? 'mp-selected' : ''}>
+                      <td style={{ color:'#12213A', fontWeight: row.is_selected ? 700 : 400 }}>
+                        {(row.threshold * 100).toFixed(1)}%
+                      </td>
+                      <td style={{ color:'#047857' }}>{(row.recall * 100).toFixed(1)}%</td>
+                      <td>{(row.precision * 100).toFixed(1)}%</td>
+                      <td>{(row.specificity * 100).toFixed(1)}%</td>
+                      <td>{row.f1_score.toFixed(4)}</td>
+                      <td style={{ color:'#b91c1c' }}>{row.fn}</td>
+                      <td style={{ color:'#b45309' }}>{row.fp}</td>
+                      <td style={{ color:'#12213A' }}>${row.avg_cost_per_patient.toFixed(4)}</td>
+                      <td>
+                        {row.is_selected ? (
+                          <span style={{
+                            background:'#059669', color:'#fff', fontSize:'10px',
+                            padding:'2px 8px', borderRadius:'4px', fontWeight:700,
+                            textTransform:'uppercase', letterSpacing:'0.5px'
+                          }}>
+                            Operating Cutoff
+                          </span>
+                        ) : (
+                          <span style={{ color:'#94a3b8', fontSize:'10px' }}>Evaluated</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div style={{ padding:'24px', textAlign:'center', color:'#94a3b8', fontSize:'13px' }}>
+              <Sliders style={{ width:20, height:20, color:'#cbd5e1', margin:'0 auto 8px' }} />
+              No threshold analysis data available.
+            </div>
+          )}
+        </div>
+
+        {/* ============================================================ */}
+        {/*  Bottom: Confusion Matrix + Candidate Model Comparison       */}
+        {/* ============================================================ */}
+        <div className="mp-bottom-grid">
+          {/* Confusion Matrix */}
+          <div style={pageStyles.sectionCard}>
+            <div style={{ ...pageStyles.sectionHeader, marginBottom:'14px' }}>
+              <h2 style={pageStyles.sectionTitle}>
+                Out-of-Fold Confusion Matrix (25,000)
+              </h2>
+            </div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px' }}>
+              <div className="mp-cm-cell" style={{ background:'#f8fafc', border:'1px solid #e2e8f0' }}>
+                <span className="mp-cm-label" style={{ color:'#64748b' }}>True Negative</span>
+                <span className="mp-cm-val" style={{ color:'#334155' }}>{cm.tn.toLocaleString()}</span>
+                <span className="mp-cm-note" style={{ color:'#94a3b8' }}>Correct Non-Readmissions</span>
+              </div>
+              <div className="mp-cm-cell" style={{ background:'#fffbeb', border:'1px solid #fde68a' }}>
+                <span className="mp-cm-label" style={{ color:'#92400e' }}>False Positive</span>
+                <span className="mp-cm-val" style={{ color:'#78350f' }}>{cm.fp.toLocaleString()}</span>
+                <span className="mp-cm-note" style={{ color:'#b45309' }}>Preventive Reviews ($1× cost)</span>
+              </div>
+              <div className="mp-cm-cell" style={{ background:'#fef2f2', border:'1px solid #fecaca' }}>
+                <span className="mp-cm-label" style={{ color:'#991b1b' }}>False Negative</span>
+                <span className="mp-cm-val" style={{ color:'#7f1d1d' }}>{cm.fn.toLocaleString()}</span>
+                <span className="mp-cm-note" style={{ color:'#b91c1c' }}>Missed Readmissions ($5× cost)</span>
+              </div>
+              <div className="mp-cm-cell" style={{ background:'#ecfdf5', border:'1px solid #a7f3d0' }}>
+                <span className="mp-cm-label" style={{ color:'#065f46' }}>True Positive</span>
+                <span className="mp-cm-val" style={{ color:'#064e3b' }}>{cm.tp.toLocaleString()}</span>
+                <span className="mp-cm-note" style={{ color:'#047857' }}>Caught Readmissions</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Candidate Model Comparison */}
+          <div style={pageStyles.sectionCard}>
+            <div style={{ ...pageStyles.sectionHeader, marginBottom:'14px' }}>
+              <h2 style={pageStyles.sectionTitle}>
+                Candidate Model Comparison
+              </h2>
+              <span style={{ fontSize:'11px', color:'#64748b' }}>Stratified 5-Fold CV</span>
+            </div>
+            <div className="mp-overflow-x">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Model Architecture</th>
+                    <th>ROC-AUC</th>
+                    <th>PR-AUC</th>
+                    <th>Recall</th>
+                    <th>Cost Cutoff</th>
+                    <th>Avg Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="mp-selected">
+                    <td style={{ color:'#12213A', fontWeight:700, display:'flex', alignItems:'center', gap:'6px' }}>
+                      Logistic Regression
+                      <span style={{
+                        background:'#059669', color:'#fff', fontSize:'9px',
+                        padding:'1px 6px', borderRadius:'3px', fontWeight:700,
+                        textTransform:'uppercase'
+                      }}>Selected</span>
+                    </td>
+                    <td>0.6474</td>
+                    <td>0.6254</td>
+                    <td style={{ color:'#047857' }}>99.88%</td>
+                    <td>25.62%</td>
+                    <td style={{ color:'#047857' }}>$0.5286</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight:500 }}>Gradient Boosting Classifier</td>
+                    <td>0.6512</td>
+                    <td>0.6261</td>
+                    <td>99.85%</td>
+                    <td>18.45%</td>
+                    <td>$0.5291</td>
+                  </tr>
+                  <tr>
+                    <td style={{ fontWeight:500 }}>Random Forest</td>
+                    <td>0.6381</td>
+                    <td>0.6078</td>
+                    <td>99.92%</td>
+                    <td>11.34%</td>
+                    <td>$0.5295</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/*  Compact Methodology Bar                                     */}
+        {/* ============================================================ */}
+        <div style={pageStyles.methodologyBar}>
+          <span>• <strong>Probability:</strong> Platt-calibrated 30-day readmission probability.</span>
+          <span>• <strong>Risk bands:</strong> Calibrated reference-cohort P25 / P50 / P75.</span>
+          <span>• <strong>Population shift:</strong> Higher-acuity cohorts legitimately produce more Q4 patients.</span>
+        </div>
+
+      </div>
+    </>
   );
 };

@@ -1,0 +1,224 @@
+{
+  "base_model": "LogisticRegression",
+  "base_model_hash": "74BA9C6508BAD62F6378E35679E0BB8C693FDC7B2D33AD51C2C859FCBF9FB3C0",
+  "calibration_method": "Platt Scaling (Sigmoid)",
+  "calibrator_version": "1.0.0",
+  "calibration_dataset_split": "70% Train (17,500), 15% Calibration (3,750), 15% Test (3,750)",
+  "test_set_size": 3750,
+  "reference_cohort_size": 25000,
+  "reference_boundaries": {
+    "p25": 0.387042,
+    "p50": 0.444758,
+    "p75": 0.520089,
+    "q1_label": "Minimal Risk \u00b7 Q1 Reference",
+    "q2_label": "Moderate Risk \u00b7 Q2 Reference",
+    "q3_label": "Elevated Risk \u00b7 Q3 Reference",
+    "q4_label": "High Risk \u00b7 Q4 Reference"
+  },
+  "raw_metrics": {
+    "brier_score": 0.2326,
+    "log_loss": 0.66,
+    "ece": 0.0323,
+    "mce": 0.1093,
+    "calibration_slope": 0.9257,
+    "calibration_intercept": -0.1252,
+    "roc_auc": 0.6483,
+    "pr_auc": 0.6222,
+    "curve_data": [
+      {
+        "bin": 1,
+        "range_min": 0.0,
+        "range_max": 0.1,
+        "patients": 0,
+        "mean_predicted_prob": null,
+        "actual_readmission_rate": null,
+        "calibration_error": null
+      },
+      {
+        "bin": 2,
+        "range_min": 0.1,
+        "range_max": 0.2,
+        "patients": 0,
+        "mean_predicted_prob": null,
+        "actual_readmission_rate": null,
+        "calibration_error": null
+      },
+      {
+        "bin": 3,
+        "range_min": 0.2,
+        "range_max": 0.3,
+        "patients": 72,
+        "mean_predicted_prob": 0.2759,
+        "actual_readmission_rate": 0.1667,
+        "calibration_error": 0.1093
+      },
+      {
+        "bin": 4,
+        "range_min": 0.3,
+        "range_max": 0.4,
+        "patients": 736,
+        "mean_predicted_prob": 0.3638,
+        "actual_readmission_rate": 0.3315,
+        "calibration_error": 0.0323
+      },
+      {
+        "bin": 5,
+        "range_min": 0.4,
+        "range_max": 0.5,
+        "patients": 1409,
+        "mean_predicted_prob": 0.4495,
+        "actual_readmission_rate": 0.4202,
+        "calibration_error": 0.0293
+      },
+      {
+        "bin": 6,
+        "range_min": 0.5,
+        "range_max": 0.6,
+        "patients": 876,
+        "mean_predicted_prob": 0.5433,
+        "actual_readmission_rate": 0.5205,
+        "calibration_error": 0.0227
+      },
+      {
+        "bin": 7,
+        "range_min": 0.6,
+        "range_max": 0.7,
+        "patients": 341,
+        "mean_predicted_prob": 0.6428,
+        "actual_readmission_rate": 0.6628,
+        "calibration_error": 0.02
+      },
+      {
+        "bin": 8,
+        "range_min": 0.7,
+        "range_max": 0.8,
+        "patients": 178,
+        "mean_predicted_prob": 0.7431,
+        "actual_readmission_rate": 0.6742,
+        "calibration_error": 0.0689
+      },
+      {
+        "bin": 9,
+        "range_min": 0.8,
+        "range_max": 0.9,
+        "patients": 84,
+        "mean_predicted_prob": 0.8418,
+        "actual_readmission_rate": 0.7976,
+        "calibration_error": 0.0442
+      },
+      {
+        "bin": 10,
+        "range_min": 0.9,
+        "range_max": 1.0,
+        "patients": 54,
+        "mean_predicted_prob": 0.9533,
+        "actual_readmission_rate": 0.8519,
+        "calibration_error": 0.1014
+      }
+    ]
+  },
+  "calibrated_metrics": {
+    "brier_score": 0.232,
+    "log_loss": 0.6581,
+    "ece": 0.0139,
+    "mce": 0.0756,
+    "calibration_slope": 1.0128,
+    "calibration_intercept": 0.005,
+    "roc_auc": 0.6483,
+    "pr_auc": 0.6222,
+    "curve_data": [
+      {
+        "bin": 1,
+        "range_min": 0.0,
+        "range_max": 0.1,
+        "patients": 0,
+        "mean_predicted_prob": null,
+        "actual_readmission_rate": null,
+        "calibration_error": null
+      },
+      {
+        "bin": 2,
+        "range_min": 0.1,
+        "range_max": 0.2,
+        "patients": 0,
+        "mean_predicted_prob": null,
+        "actual_readmission_rate": null,
+        "calibration_error": null
+      },
+      {
+        "bin": 3,
+        "range_min": 0.2,
+        "range_max": 0.3,
+        "patients": 114,
+        "mean_predicted_prob": 0.2773,
+        "actual_readmission_rate": 0.2018,
+        "calibration_error": 0.0756
+      },
+      {
+        "bin": 4,
+        "range_min": 0.3,
+        "range_max": 0.4,
+        "patients": 1027,
+        "mean_predicted_prob": 0.3615,
+        "actual_readmission_rate": 0.3544,
+        "calibration_error": 0.007
+      },
+      {
+        "bin": 5,
+        "range_min": 0.4,
+        "range_max": 0.5,
+        "patients": 1462,
+        "mean_predicted_prob": 0.446,
+        "actual_readmission_rate": 0.446,
+        "calibration_error": 0.0001
+      },
+      {
+        "bin": 6,
+        "range_min": 0.5,
+        "range_max": 0.6,
+        "patients": 664,
+        "mean_predicted_prob": 0.54,
+        "actual_readmission_rate": 0.5753,
+        "calibration_error": 0.0353
+      },
+      {
+        "bin": 7,
+        "range_min": 0.6,
+        "range_max": 0.7,
+        "patients": 264,
+        "mean_predicted_prob": 0.644,
+        "actual_readmission_rate": 0.6591,
+        "calibration_error": 0.0151
+      },
+      {
+        "bin": 8,
+        "range_min": 0.7,
+        "range_max": 0.8,
+        "patients": 126,
+        "mean_predicted_prob": 0.7446,
+        "actual_readmission_rate": 0.7222,
+        "calibration_error": 0.0224
+      },
+      {
+        "bin": 9,
+        "range_min": 0.8,
+        "range_max": 0.9,
+        "patients": 53,
+        "mean_predicted_prob": 0.8443,
+        "actual_readmission_rate": 0.7736,
+        "calibration_error": 0.0707
+      },
+      {
+        "bin": 10,
+        "range_min": 0.9,
+        "range_max": 1.0,
+        "patients": 40,
+        "mean_predicted_prob": 0.9525,
+        "actual_readmission_rate": 0.9,
+        "calibration_error": 0.0525
+      }
+    ]
+  },
+  "ece_explanation": "Calibration metrics are sample-based estimates. When dataset size increases, the estimate can change because more observations reveal the model's actual probability behavior. Dataset distribution shift can also change observed calibration. Therefore, increasing N does not guarantee a lower ECE.",
+  "risk_methodology": "Calibrated probability estimates the patient's predicted likelihood of readmission. Reference-cohort risk bands indicate where that patient falls relative to the prediction distribution of the reference hospital population. A new patient population may have a different risk distribution. Therefore, new datasets are not expected to contain exactly 25% of patients in each risk band."
+}

@@ -57,5 +57,5 @@ def test_model_service_predict_single():
     res = service.predict_single(sample)
     assert 0.0 <= res["readmission_probability"] <= 1.0
     assert res["predicted_readmitted"] in ["yes", "no"]
-    assert res["clinical_risk_tier"] in ["Low Risk", "Moderate Risk", "High Risk"]
+    assert res["clinical_risk_tier"] in ["Minimal Risk", "Moderate Risk", "Elevated Risk", "High Risk", "Low Risk"]
     assert len(res["top_3_shap_drivers"]) == 3

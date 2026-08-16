@@ -1,20 +1,31 @@
 import React from 'react';
 import { BatchPatientResult } from '../types';
 import { ScoreGauge } from './ScoreGauge';
-import { ChevronRight, Clock, ShieldAlert } from 'lucide-react';
+import { ChevronRight, Clock, ShieldAlert, User, Calendar } from 'lucide-react';
 
 interface PatientRowProps {
-  patient: BatchPatientResult;
+  patient: BatchPatientResult & Record<string, any>;
   threshold?: number;
   onSelect: (patient: BatchPatientResult) => void;
 }
 
-export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2021, onSelect }) => {
-  const patientData: Record<string, any> = patient.patient_data || {};
-  const patientId = `PT-${1000 + patient.patient_index}`;
+export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2562, onSelect }) => {
+  const patientData: Record<string, any> = patient.patient_data || patient;
+  const patientId = patient.patient_id || patientData.patient_id || `PT-100${patient.patient_index || 1}`;
+  const patientName = patient.patient_name || patientData.patient_name || 'N/A';
+  const dob = patient.date_of_birth || patientData.date_of_birth || 'N/A';
+  const source = (patient.source || patientData.source || 'KAGGLE').toUpperCase();
   const age = patientData.age || '[70-80)';
   const stayDays = patientData.time_in_hospital || 4;
   const specialty = patientData.medical_specialty || 'General';
+
+  const sourceBadges: Record<string, { label: string; style: string }> = {
+    UPLOADED_CSV: { label: 'UPLOADED CSV', style: 'bg-purple-100 text-purple-900 border-purple-200' },
+    MANUAL: { label: 'MANUAL INTAKE', style: 'bg-emerald-100 text-emerald-900 border-emerald-200' },
+    KAGGLE: { label: 'KAGGLE SEEDED', style: 'bg-slate-100 text-slate-700 border-slate-200' }
+  };
+
+  const badge = sourceBadges[source] || sourceBadges.KAGGLE;
 
   return (
     <div
@@ -24,8 +35,8 @@ export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2
       {/* Patient Identifier & Compact Gauge */}
       <div className="flex items-center gap-4">
         <ScoreGauge
-          probability={patient.readmission_probability}
-          tier={patient.clinical_risk_tier}
+          probability={patient.readmission_probability || 0.3}
+          tier={patient.clinical_risk_tier || 'Moderate Risk'}
           threshold={threshold}
           variant="compact"
           showLabel={false}
@@ -34,11 +45,24 @@ export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2
         <div>
           <div className="flex items-center gap-2">
             <span className="font-mono font-bold text-sm text-[#12213A] tracking-tight">{patientId}</span>
-            <span className="text-xs text-slate-500">•</span>
-            <span className="text-xs font-medium text-slate-600">{specialty}</span>
+            {patientName !== 'N/A' && (
+              <span className="text-xs font-semibold text-slate-800 flex items-center gap-1">
+                <User className="w-3 h-3 text-slate-400" /> {patientName}
+              </span>
+            )}
+            <span className={`text-[10px] font-mono uppercase px-1.5 py-0.2 rounded border ${badge.style}`}>
+              {badge.label}
+            </span>
           </div>
           <div className="flex items-center gap-3 text-xs text-slate-500 mt-0.5">
+            <span className="font-semibold text-slate-600">{specialty}</span>
+            <span className="text-slate-300">•</span>
             <span className="font-mono">{age}</span>
+            {dob !== 'N/A' && (
+              <span className="flex items-center gap-1 font-mono text-slate-400">
+                <Calendar className="w-3 h-3" /> DOB: {dob}
+              </span>
+            )}
             <span className="flex items-center gap-1 font-mono">
               <Clock className="w-3 h-3 text-slate-400" />
               {stayDays}d stay
@@ -57,8 +81,8 @@ export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2
         </div>
 
         <ScoreGauge
-          probability={patient.readmission_probability}
-          tier={patient.clinical_risk_tier}
+          probability={patient.readmission_probability || 0.3}
+          tier={patient.clinical_risk_tier || 'Moderate Risk'}
           threshold={threshold}
           variant="compact"
           showLabel={true}

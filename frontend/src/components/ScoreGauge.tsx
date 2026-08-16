@@ -3,7 +3,7 @@ import { getRiskTierTheme } from '../tokens/colors';
 
 interface ScoreGaugeProps {
   probability: number;
-  tier: 'Low Risk' | 'Moderate Risk' | 'High Risk';
+  tier: string;
   threshold?: number;
   variant?: 'compact' | 'full';
   showLabel?: boolean;
@@ -12,12 +12,14 @@ interface ScoreGaugeProps {
 export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
   probability,
   tier,
-  threshold = 0.2021,
+  threshold = 0.2562,
   variant = 'compact',
   showLabel = true,
 }) => {
   const theme = getRiskTierTheme(tier);
-  const scorePct = Math.round(probability * 100);
+  // Format percentage with 1 decimal precision to avoid coarse integer rounding
+  const pctValue = probability * 100;
+  const scorePctStr = pctValue >= 99.95 ? '99.9%' : `${pctValue.toFixed(1)}%`;
 
   if (variant === 'compact') {
     const radius = 18;
@@ -49,8 +51,8 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
               className="transition-all duration-700 ease-out"
             />
           </svg>
-          <span className="absolute font-mono text-[11px] font-bold text-[#12213A] tabular-nums">
-            {scorePct}%
+          <span className="absolute font-mono text-[10px] font-bold text-[#12213A] tabular-nums">
+            {scorePctStr}
           </span>
         </div>
         {showLabel && (
@@ -112,11 +114,11 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
           />
         </svg>
         {/* Score Display Center */}
-        <div className="absolute top-[48px] flex flex-col items-center">
-          <span className="font-mono text-3xl font-bold tracking-tight text-[#12213A] tabular-nums">
-            {scorePct}%
+        <div className="absolute top-[44px] flex flex-col items-center">
+          <span className="font-mono text-2xl font-bold tracking-tight text-[#12213A] tabular-nums">
+            {scorePctStr}
           </span>
-          <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">
+          <span className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">
             Readmission Risk
           </span>
         </div>
@@ -135,7 +137,7 @@ export const ScoreGauge: React.FC<ScoreGaugeProps> = ({
           {tier}
         </span>
         <span className="text-xs text-slate-500 font-mono">
-          Cutoff: <span className="font-bold text-slate-700">{(threshold * 100).toFixed(1)}%</span>
+          Tier: <span className="font-bold text-slate-700">{tier}</span>
         </span>
       </div>
     </div>

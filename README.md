@@ -1,90 +1,60 @@
 # Vitals — Hospital Readmission Risk Platform
+### Cognizant Hackathon — Use Case 2: Predicting Hospital Readmissions
 
-Vitals is an end-to-end clinical decision-support machine learning platform that predicts 30-day hospital patient readmissions using clinical demographics, prior health system utilization, diagnoses, and inpatient treatment intensity. Trained on the official 25,000-row Kaggle Hospital Readmissions dataset, the system combines cost-sensitive decision threshold optimization with plain-language SHAP explainability drivers, a production FastAPI backend, and an authoritative clinical UI designed for rapid clinician comprehension under time pressure.
-
----
-
-> [!IMPORTANT]
-> **Dataset Provenance & Priority Rule**
-> 
-> The primary model is trained on the real **Kaggle Hospital Readmissions dataset** (25,000 patient records) supplied by the problem statement and stored at `data/raw/hospital_readmissions.csv`. Synthetic data generation is retained only as a development fallback when the real dataset is unavailable.
-> 
-> **Kaggle Dataset Source**: [https://www.kaggle.com/datasets/dubradave/hospital-readmissions](https://www.kaggle.com/datasets/dubradave/hospital-readmissions)
-
-> [!WARNING]
-> **Clinical Disclaimer**
-> 
-> This platform is a clinical decision-support prototype designed for risk triage and explainable decision assistance. It does not provide medical diagnoses or replace professional clinical judgment.
+**Vitals** is an enterprise-oriented clinical decision-support platform designed to identify high-risk hospital readmission patients prior to discharge, explain prediction factors via plain-language SHAP drivers, provide patient-specific preventive action recommendations, and maintain complete prediction audit trails.
 
 ---
 
-## 📊 Retrained Model Evaluation Metrics (Stratified 5-Fold CV on 25,000 Real Rows)
+## 🚀 Key Features
 
-| Model Architecture | Out-of-Fold ROC-AUC | Out-of-Fold PR-AUC | F1-Score | Recall (Positive Class) | Operating Cutoff | Avg Cost / Patient |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Logistic Regression** *(Winner)* | **0.6474** | **0.6254** | **0.6408** | **99.88%** | **25.62%** | **$0.5286** |
-| LightGBM | 0.6532 | 0.6273 | 0.6399 | 99.97% | 12.82% | $0.5295 |
-| Random Forest | 0.6395 | 0.6093 | 0.6397 | 100.00% | 6.42% | $0.5296 |
-
-*Note: Operating threshold is selected via cost-sensitive analysis where a missed readmission (False Negative) is parameterized as 5x more costly than an unnecessary intervention ($C_{FN}=5.0, C_{FP}=1.0$).*
-
----
-
-## 🏗️ System Architecture
-
-```
-+-----------------------------------------------------------------------+
-|                       CLINICAL USER INTERFACE                         |
-|                   React 18 + TypeScript + Vite (:5173)                |
-|  - Ward Discharge Overview (Seeded dynamically via /sample-patients)  |
-|  - Signature SVG Score Arc Gauge (Compact & Full variants)            |
-|  - Patient Detail Drilldown & Plain-Language SHAP Risk Driver Bar     |
-|  - Interactive New Patient Intake Assessment Form                     |
-|  - Live Model Performance Dashboard (Recharts OOF ROC & Confusion Matrix)|
-+-----------------------------------------------------------------------+
-                                   |
-                             REST API (JSON)
-                                   v
-+-----------------------------------------------------------------------+
-|                          FASTAPI BACKEND SERVICE                      |
-|                        Python 3.11 / Uvicorn (:8000)                  |
-|  - GET  /health          : Status & model load confirmation            |
-|  - GET  /model/metrics   : OOF metrics, ROC points, confusion matrix  |
-|  - GET  /sample-patients : Serves real patient rows for Ward Overview |
-|  - POST /predict         : Single patient probability & SHAP drivers   |
-|  - POST /predict_batch   : Ward JSON & CSV upload scoring             |
-+-----------------------------------------------------------------------+
-                                   |
-                         Inference & Pipelines
-                                   v
-+-----------------------------------------------------------------------+
-|                       SERIALIZED ML ARTIFACTS                         |
-|  - models/best_model.pkl (Scikit-Learn ColumnTransformer + Classifier) |
-|  - models/model_metadata.json (Metrics, threshold, feature manifest)  |
-|  - reports/figures/shap_summary.png (Global SHAP plot)                |
-+-----------------------------------------------------------------------+
-```
+1. **25,000-Record Kaggle Dataset Pipeline**: Evaluated on 25,000 real Kaggle hospital readmission records (`data/raw/hospital_readmissions.csv`).
+2. **Cost-Sensitive Threshold Optimization**: Tuning operating cutoff at `25.62%` based on clinical cost parameters ($C_{FN}=\$5.0$ vs $C_{FP}=\$1.0$), catching **99.88%** of true readmissions ($0.5286/patient).
+3. **Plain-Language SHAP Explainability**: Local feature impacts translated into intuitive clinical statements.
+4. **Deterministic Preventive Recommendation Engine**: Rule engine providing prioritized action items for clinician consideration.
+5. **Full Dataset Pagination Architecture**: `GET /api/v1/patients?page=1&page_size=15` serving all 25,000 records across 1,667 pages.
+6. **Enterprise Authentication & RBAC**: JWT Bearer auth with PBKDF2-HMAC-SHA256 password hashing and role-based permissions (`CLINICIAN`, `ANALYST`, `ADMIN`).
+7. **Operational Database Persistence**: SQLAlchemy ORM backing predictions, SHAP explanations, preventive actions, audit logs, and users (SQLite / PostgreSQL).
+8. **Probability Calibration & Threshold Analysis**: Monitoring endpoints for Brier score (`0.2485`), calibration curve, and threshold grid analysis ($[0.05, \dots, 0.90]$).
+9. **Observability & Health Probes**: `/api/v1/live`, `/api/v1/ready`, `/api/v1/health` probes.
 
 ---
 
-## ⚡ Single-Command Execution
+## 🛠️ Quickstart
 
-Run the complete platform via Docker Compose:
-
+### 1. Run Local Backend & Frontend
 ```bash
-docker-compose up --build
+# Terminal 1: Backend API
+pip install -r requirements.txt
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2: Clinical UI
+cd frontend
+npm install
+npx vite --host --port 5173
 ```
 
-Access the application:
-- **Clinical Frontend**: [http://localhost:5173](http://localhost:5173)
-- **FastAPI Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **Backend Health Check**: [http://localhost:8000/health](http://localhost:8000/health)
+### 2. Hackathon Demo Accounts
+- **Clinician**: `clinician@vitals.health` / `Clinician123!` (Ward Overview, Intake, Patient Details)
+- **Analyst**: `analyst@vitals.health` / `Analyst123!` (Model Analytics, ROC, PR, Calibration, Threshold Analysis)
+- **Admin**: `admin@vitals.health` / `Admin123!` (Admin Portal, System Health, Audit Logs)
 
 ---
 
-## 💡 Key Machine Learning & Architectural Decisions
+## 📊 Model Performance Summary (Stratified 5-Fold CV)
 
-1. **25,000-Row Real Dataset Training**: All models are trained directly on `data/raw/hospital_readmissions.csv` using Stratified 5-Fold Cross Validation.
-2. **Plain-Language SHAP Driver Translation**: Feature codes (e.g. `n_emergency = 2`) are dynamically translated by `api/dependencies.py` into intuitive explanations (*"2 emergency room visit(s) in past year"*).
-3. **Cost-Sensitive Decision Threshold Tuning**: Missed readmissions (False Negatives) carry $5\times$ higher cost penalty than unnecessary interventions (False Positives). Optimal cutoff ($25.62\%$) is selected from out-of-fold predictions.
-4. **Target Column Safety**: Batch CSV upload (`POST /predict_batch`) automatically detects and drops `readmitted` or ID columns if present before inference.
+| Metric | Out-of-Fold Score |
+| :--- | :--- |
+| **Model Architecture** | Logistic Regression (`best_model.pkl`) |
+| **ROC-AUC Score** | `0.6474` |
+| **PR-AUC Score** | `0.6254` |
+| **Positive Recall** | `99.88%` (11,740 / 11,754 readmissions caught) |
+| **Positive Precision** | `47.18%` |
+| **F1-Score** | `0.6408` |
+| **Operating Cutoff** | `25.62%` (`0.2562`) |
+| **Avg Cost / Patient** | `$0.5286` |
+| **Brier Score** | `0.2485` |
+
+---
+
+## 📜 Clinical Disclaimer
+*Vitals is a clinical decision-support prototype using de-identified research data. Predictions and recommendations are decision-support suggestions for clinician consideration and are not medical diagnoses or treatment instructions.*
