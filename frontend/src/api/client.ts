@@ -73,7 +73,7 @@ export async function fetchUploads(): Promise<any[]> {
   return res.json();
 }
 
-export async function fetchPatientShap(patientId: string): Promise<{ patient_id: string; drivers: any[] }> {
+export async function fetchPatientShap(patientId: string): Promise<{ patient_id: string; drivers: any[]; preventive_actions?: any[] }> {
   const res = await fetch(`${API_BASE_URL}/api/v1/patients/${encodeURIComponent(patientId)}/shap`, {
     headers: { ...getAuthHeaders() }
   });

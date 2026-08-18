@@ -13,6 +13,7 @@ interface PatientDetailProps {
 export const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack }) => {
   const [prediction, setPrediction] = useState<PredictionResult | null>(null);
   const [shapDrivers, setShapDrivers] = useState<any[]>([]);
+  const [fetchedActions, setFetchedActions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,17 +32,22 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack })
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch dedicated SHAP driver analysis from PostgreSQL DB
+      // 1. Fetch dedicated SHAP driver analysis & preventive actions from PostgreSQL DB
       try {
         const shapData = await fetchPatientShap(patientId);
-        if (shapData && shapData.drivers && shapData.drivers.length > 0) {
-          const formatted = shapData.drivers.map((d: any) => ({
-            feature: d.feature,
-            shap_value: d.shap_value,
-            direction: d.shap_value > 0 ? 'Increases Readmission Risk' : 'Decreases Readmission Risk',
-            plain_language_driver: d.label || d.feature
-          }));
-          setShapDrivers(formatted);
+        if (shapData) {
+          if (shapData.drivers && shapData.drivers.length > 0) {
+            const formatted = shapData.drivers.map((d: any) => ({
+              feature: d.feature,
+              shap_value: d.shap_value,
+              direction: d.shap_value > 0 ? 'Increases Readmission Risk' : 'Decreases Readmission Risk',
+              plain_language_driver: d.label || d.feature
+            }));
+            setShapDrivers(formatted);
+          }
+          if (shapData.preventive_actions && shapData.preventive_actions.length > 0) {
+            setFetchedActions(shapData.preventive_actions);
+          }
         }
       } catch (shapErr) {
         console.warn('Dedicated SHAP query failed:', shapErr);
@@ -60,6 +66,9 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack })
         if (shapDrivers.length === 0 && predRes.top_3_shap_drivers) {
           setShapDrivers(predRes.top_3_shap_drivers);
         }
+        if (fetchedActions.length === 0 && predRes.preventive_actions) {
+          setFetchedActions(predRes.preventive_actions);
+        }
       }
     } catch (err: any) {
       if (shapDrivers.length === 0) {
@@ -73,7 +82,8 @@ export const PatientDetail: React.FC<PatientDetailProps> = ({ patient, onBack })
   const probability = prediction ? prediction.readmission_probability : (patient.readmission_probability || 0.25);
   const tier = prediction ? prediction.clinical_risk_tier : (patient.clinical_risk_tier || 'Low Risk');
   const threshold = prediction ? prediction.operating_threshold : 0.2562;
-  const preventiveActions = prediction?.preventive_actions || patient.preventive_actions || [];
+  const preventiveActions = prediction?.preventive_actions || (fetchedActions.length > 0 ? fetchedActions : (patient.preventive_actions || []));
+
 
   return (
     <div className="space-y-6">

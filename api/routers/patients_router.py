@@ -305,10 +305,45 @@ def get_patient_shap(
         if pred:
             db.commit()
 
+    # Retrieve or generate preventive actions
+    actions = []
+    if pred and pred.preventive_actions and len(pred.preventive_actions) > 0:
+        for a in pred.preventive_actions:
+            actions.append({
+                "title": a.title,
+                "reason": a.reason,
+                "priority": a.priority
+            })
+
+    if not actions:
+        from src.recommendations import generate_preventive_actions
+        p_dict = {
+            "age": patient.age,
+            "medical_specialty": patient.medical_specialty,
+            "time_in_hospital": patient.time_in_hospital,
+            "n_inpatient": patient.n_inpatient,
+            "n_emergency": patient.n_emergency,
+            "n_outpatient": patient.n_outpatient,
+            "n_medications": patient.n_medications,
+            "n_lab_procedures": patient.n_lab_procedures,
+            "n_procedures": patient.n_procedures,
+            "diag_1": patient.diag_1,
+            "diag_2": patient.diag_2,
+            "diag_3": patient.diag_3,
+            "glucose_test": patient.glucose_test,
+            "A1Ctest": patient.A1Ctest,
+            "change": patient.change,
+            "diabetes_med": patient.diabetes_med
+        }
+        r_tier = pred.risk_tier if pred else "High Risk"
+        actions = generate_preventive_actions(p_dict, r_tier, drivers)
+
     return {
         "patient_id": patient.patient_id,
-        "drivers": drivers
+        "drivers": drivers,
+        "preventive_actions": actions
     }
+
 
 @router.delete("/{patient_id_param}")
 def delete_patient_record(
