@@ -41,6 +41,8 @@ pgsql/
 mlruns/
 artifacts/
 
-# Temporary / Log files
+# Temporary / Log files & zip archives
 *.log
+*.zip
 scratch/
+

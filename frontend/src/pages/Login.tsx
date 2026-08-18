@@ -14,7 +14,7 @@ export const Login: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await login(email, password);
+      await login(email.trim(), password);
     } catch (err: any) {
       setError(err.message || 'Authentication failed. Please check credentials.');
     } finally {
@@ -29,10 +29,10 @@ export const Login: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-8 space-y-6">
+      <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 shadow-xs p-8 space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="w-12 h-12 bg-[#12213A] rounded-xl flex items-center justify-center mx-auto shadow-sm">
+          <div className="w-12 h-12 bg-[#12213A] rounded-xl flex items-center justify-center mx-auto shadow-xs">
             <Activity className="w-6 h-6 text-emerald-400" />
           </div>
           <h1 className="text-2xl font-bold font-display text-[#12213A] tracking-tight">VITALS</h1>
@@ -44,7 +44,7 @@ export const Login: React.FC = () => {
         {/* Demo Account Quick-Login Buttons */}
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
           <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block flex items-center gap-1">
-            <UserCheck className="w-3.5 h-3.5 text-slate-400" /> Hackathon Quick Demo Accounts:
+            <UserCheck className="w-3.5 h-3.5 text-slate-400" /> Demo Quick Accounts:
           </span>
           <div className="grid grid-cols-3 gap-1.5 text-[11px]">
             <button
@@ -123,7 +123,7 @@ export const Login: React.FC = () => {
         {/* Clinical Disclaimer Footer */}
         <div className="pt-2 border-t border-slate-100 text-center">
           <p className="text-[11px] text-slate-400 leading-tight">
-            Protected clinical decision-support system. Unauthorized access prohibited.
+            Protected clinical decision-support system. Only Administrator can provision Clinician and Analyst accounts.
           </p>
         </div>
       </div>

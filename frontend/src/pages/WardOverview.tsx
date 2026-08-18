@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { BatchPatientResult } from '../types';
-import { fetchPatients, fetchUploads, predictBatchCsv } from '../api/client';
+import { fetchPatients, fetchUploads, predictBatchCsv, deletePatient } from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { PatientRow } from '../components/PatientRow';
 import { PatientDetail } from './PatientDetail';
-import { Search, Upload, RefreshCw, AlertTriangle, Users, Filter, CheckCircle, Database, ChevronLeft, ChevronRight, FileSpreadsheet, ArrowUpDown } from 'lucide-react';
+import { Search, Upload, RefreshCw, AlertTriangle, Users, Filter, CheckCircle, Database, ChevronLeft, ChevronRight, FileSpreadsheet } from 'lucide-react';
 
 interface WardOverviewProps {
   onSelectPatient?: (patient: BatchPatientResult) => void;
 }
 
 export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) => {
+  const { user } = useAuth();
+  const userRole = (user?.role || 'CLINICIAN').toUpperCase();
+  const canDeletePatients = userRole === 'ADMIN' || userRole === 'ANALYST';
+
   const [patientsList, setPatientsList] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -31,11 +36,12 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
   const [elevatedCount, setElevatedCount] = useState<number>(0);
   const [modCount, setModCount] = useState<number>(0);
   const [minimalCount, setMinimalCount] = useState<number>(0);
-  const [lowCount, setLowCount] = useState<number>(0);
+
 
   const [uploadedFilesList, setUploadedFilesList] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [uploadedInfo, setUploadedInfo] = useState<string | null>(null);
+
 
   // Trigger server-side query on filter, page, or search change
   useEffect(() => {
@@ -76,7 +82,7 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
       setElevatedCount(res.elevated_risk_count || 0);
       setModCount(res.moderate_risk_count || 0);
       setMinimalCount(res.minimal_risk_count || 0);
-      setLowCount(res.low_risk_count || 0);
+
       setPageInput(String(res.page));
 
       const items = res.patients.map((p: any) => {
@@ -98,7 +104,7 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
 
       setPatientsList(items);
     } catch (err: any) {
-      setError(err.message || 'Failed to load persistent patient database records.');
+      setError(err.message || 'Failed to query database patient records.');
     } finally {
       setLoading(false);
     }
@@ -112,9 +118,9 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
 
   const handlePageJumpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const pageNum = parseInt(pageInput, 10);
-    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
-      setCurrentPage(pageNum);
+    const p = parseInt(pageInput, 10);
+    if (!isNaN(p) && p >= 1 && p <= totalPages) {
+      setCurrentPage(p);
     } else {
       setPageInput(String(currentPage));
     }
@@ -125,7 +131,7 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
     if (!file) return;
 
     setLoading(true);
-    setError(null);
+    setUploadedInfo(null);
     try {
       const batchRes = await predictBatchCsv(file);
       setUploadedInfo(`Uploaded & persisted ${batchRes.total_patients} patients from '${file.name}' (Upload ID: ${batchRes.upload_id})!`);
@@ -140,9 +146,25 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
     }
   };
 
+  const handleDeletePatient = async (patientId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to delete patient record '${patientId}' from PostgreSQL database?`)) {
+      return;
+    }
+
+    try {
+      await deletePatient(patientId);
+      setUploadedInfo(`Patient '${patientId}' deleted successfully.`);
+      await loadDatabasePatients();
+    } catch (err: any) {
+      alert(err.message || `Failed to delete patient ${patientId}`);
+    }
+  };
+
   if (selectedPatient) {
     return <PatientDetail patient={selectedPatient} onBack={() => setSelectedPatient(null)} />;
   }
+
 
   return (
     <div className="space-y-6">
@@ -154,7 +176,7 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
             <h1 className="text-xl font-bold font-display text-[#12213A]">Ward Discharge Risk Overview</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Single Source-of-Truth patient readmission monitoring with persistent SQLite storage, global search, and SHAP decision support.
+            Single Source-of-Truth patient readmission monitoring with persistent storage, global search, and SHAP decision support.
           </p>
         </div>
 
@@ -181,116 +203,113 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
         </div>
       </div>
 
+      {/* CSV Upload Success Alert */}
       {uploadedInfo && (
-        <div className="p-3 bg-purple-50 border border-purple-200 text-purple-900 rounded-xl text-xs flex items-center justify-between">
-          <span className="font-semibold flex items-center gap-1.5">
-            <CheckCircle className="w-4 h-4 text-purple-700" />
-            {uploadedInfo}
-          </span>
-          <button onClick={() => setUploadedInfo(null)} className="text-purple-700 hover:underline">Dismiss</button>
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">{uploadedInfo}</span>
+          </div>
+          <button onClick={() => setUploadedInfo(null)} className="text-emerald-700 font-bold hover:text-emerald-900">×</button>
         </div>
       )}
 
-      {/* Summary Cards representing Reference Risk Quartile Strata */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+      {/* Primary Global Risk Metric Cards (Server-Side Calibrated Boundaries) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-1">
           <span className="text-xs font-semibold text-slate-500 block">Total Query Records</span>
-          <p className="text-2xl font-mono font-bold text-[#12213A] mt-1">{totalRecords.toLocaleString()}</p>
+          <p className="text-2xl font-mono font-bold text-[#12213A]">{totalRecords.toLocaleString()}</p>
           <span className="text-[11px] text-slate-400 font-mono">Global DB Query Count</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-red-200 bg-red-50/20 shadow-xs">
-          <span className="text-xs font-semibold text-red-800 block">High Risk (≥52.0%)</span>
-          <p className="text-2xl font-mono font-bold text-red-700 mt-1">{highCount.toLocaleString()}</p>
-          <span className="text-[11px] text-red-600 font-medium">Q4 (75th–100th %)</span>
+        <div className="bg-white p-4 rounded-xl border border-red-200 shadow-xs space-y-1">
+          <span className="text-xs font-bold text-red-700 block">High Risk (≥52.0%)</span>
+          <p className="text-2xl font-mono font-bold text-red-800">{highCount.toLocaleString()}</p>
+          <span className="text-[11px] text-slate-500 font-mono">Q4 (75th–100th %)</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-amber-200 bg-amber-50/20 shadow-xs">
-          <span className="text-xs font-semibold text-amber-800 block">Elevated Risk (44.5%–52.0%)</span>
-          <p className="text-2xl font-mono font-bold text-amber-700 mt-1">{elevatedCount.toLocaleString()}</p>
-          <span className="text-[11px] text-amber-600 font-medium">Q3 (50th–75th %)</span>
+        <div className="bg-white p-4 rounded-xl border border-amber-200 shadow-xs space-y-1">
+          <span className="text-xs font-bold text-amber-700 block">Elevated Risk (44.5%–52.0%)</span>
+          <p className="text-2xl font-mono font-bold text-amber-800">{elevatedCount.toLocaleString()}</p>
+          <span className="text-[11px] text-slate-500 font-mono">Q3 (50th–75th %)</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-blue-200 bg-blue-50/20 shadow-xs">
-          <span className="text-xs font-semibold text-blue-800 block">Moderate Risk (38.7%–44.4%)</span>
-          <p className="text-2xl font-mono font-bold text-blue-700 mt-1">{modCount.toLocaleString()}</p>
-          <span className="text-[11px] text-blue-600 font-medium">Q2 (25th–50th %)</span>
+        <div className="bg-white p-4 rounded-xl border border-blue-200 shadow-xs space-y-1">
+          <span className="text-xs font-bold text-blue-700 block">Moderate Risk (38.7%–44.4%)</span>
+          <p className="text-2xl font-mono font-bold text-blue-800">{modCount.toLocaleString()}</p>
+          <span className="text-[11px] text-slate-500 font-mono">Q2 (25th–50th %)</span>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-emerald-200 bg-emerald-50/20 shadow-xs">
-          <span className="text-xs font-semibold text-emerald-800 block">Minimal Risk (&lt;38.7%)</span>
-          <p className="text-2xl font-mono font-bold text-emerald-700 mt-1">{(minimalCount || lowCount).toLocaleString()}</p>
-          <span className="text-[11px] text-emerald-600 font-medium">Q1 (0th–25th %)</span>
+        <div className="bg-white p-4 rounded-xl border border-emerald-200 shadow-xs space-y-1">
+          <span className="text-xs font-bold text-emerald-700 block">Minimal Risk (&lt;38.7%)</span>
+          <p className="text-2xl font-mono font-bold text-emerald-800">{minimalCount.toLocaleString()}</p>
+          <span className="text-[11px] text-slate-500 font-mono">Q1 (0th–25th %)</span>
         </div>
       </div>
 
-      {/* Global Controls Box: Source Filter, Risk Filter, Search & Sorting */}
+      {/* Filter & Control Bar */}
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-3">
-        {/* Source Filter Pills & CSV Selector */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <span className="text-xs font-semibold text-slate-600 flex items-center gap-1 mr-1">
-              <Database className="w-3.5 h-3.5 text-purple-600" /> Patient Source:
-            </span>
-            {[
-              { id: 'ALL', label: 'All Sources' },
-              { id: 'KAGGLE', label: 'Kaggle Seeded' },
-              { id: 'UPLOADED_CSV', label: 'Uploaded CSV' },
-              { id: 'MANUAL', label: 'Manual Intake' }
-            ].map((src) => (
-              <button
-                key={src.id}
-                onClick={() => {
-                  setSourceFilter(src.id);
-                  setUploadIdFilter('');
-                  setCurrentPage(1);
-                }}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap ${
-                  sourceFilter === src.id
-                    ? 'bg-purple-900 text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                {src.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Specific CSV File Dropdown when Uploaded CSV source is selected */}
-          {sourceFilter === 'UPLOADED_CSV' && (
-            <div className="flex items-center gap-2">
-              <FileSpreadsheet className="w-3.5 h-3.5 text-purple-700" />
-              {uploadedFilesList.length === 0 ? (
-                <span className="px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-slate-500">
-                  No uploaded files
-                </span>
-              ) : (
-                <select
-                  value={uploadIdFilter}
-                  onChange={(e) => {
-                    setUploadIdFilter(e.target.value);
+        {/* Row 1: Source Selector Pills */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-slate-500" />
+            <span className="text-xs font-bold text-slate-700">Patient Source:</span>
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+              {[
+                { id: 'ALL', label: 'All Sources' },
+                { id: 'KAGGLE', label: 'Kaggle Seeded' },
+                { id: 'UPLOADED_CSV', label: 'Uploaded CSV' },
+                { id: 'MANUAL', label: 'Manual Intake' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => {
+                    setSourceFilter(tab.id);
+                    if (tab.id !== 'UPLOADED_CSV') setUploadIdFilter('');
                     setCurrentPage(1);
                   }}
-                  className="px-3 py-1.5 bg-purple-50 border border-purple-200 rounded-lg text-xs font-semibold text-purple-900"
+                  className={`px-2.5 py-1 text-xs rounded-md font-semibold transition-all ${
+                    sourceFilter === tab.id
+                      ? 'bg-[#12213A] text-white shadow-2xs'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  <option value="">All Uploaded CSV Files ({uploadedFilesList.length})</option>
-                  {uploadedFilesList.map((file) => (
-                    <option key={file.upload_id} value={file.upload_id}>
-                      {file.filename} ({file.total_patients} pts, High: {file.high_risk_count})
-                    </option>
-                  ))}
-                </select>
-              )}
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Sub-Filter: Dynamic Upload File Selector */}
+          {sourceFilter === 'UPLOADED_CSV' && uploadedFilesList.length > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <FileSpreadsheet className="w-4 h-4 text-purple-600" />
+              <span className="font-semibold text-slate-700">Select Upload File:</span>
+              <select
+                value={uploadIdFilter}
+                onChange={(e) => {
+                  setUploadIdFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="bg-purple-50 border border-purple-200 text-purple-900 text-xs font-medium rounded-lg p-1.5 focus:outline-none"
+              >
+                <option value="">All Uploaded CSV Files ({uploadedFilesList.length})</option>
+                {uploadedFilesList.map((f) => (
+                  <option key={f.upload_id} value={f.upload_id}>
+                    {f.filename} ({f.total_patients} pts, High: {f.high_risk_count})
+                  </option>
+                ))}
+              </select>
             </div>
           )}
         </div>
 
-        {/* Risk Filter, Global Search, Sorting & Page Jump Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          {/* Risk Tier Filter Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto">
-            <span className="text-xs font-semibold text-slate-500 flex items-center gap-1 mr-1">
-              <Filter className="w-3.5 h-3.5 text-slate-400" /> Risk Tier:
+        {/* Row 2: Search, Risk Tier Filter, Sorting & Pagination Controls */}
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 text-xs">
+          {/* Risk Tier Pills */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-slate-500 font-medium flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5" /> Risk Tier:
             </span>
             {[
               { id: 'ALL', label: 'All Risk Tiers' },
@@ -298,55 +317,52 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
               { id: 'Elevated Risk', label: 'Elevated Risk' },
               { id: 'Moderate Risk', label: 'Moderate Risk' },
               { id: 'Minimal Risk', label: 'Minimal Risk' }
-            ].map((r) => (
+            ].map((tier) => (
               <button
-                key={r.id}
+                key={tier.id}
                 onClick={() => {
-                  setRiskFilter(r.id);
+                  setRiskFilter(tier.id);
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap ${
-                  riskFilter === r.id
-                    ? 'bg-[#12213A] text-white shadow-2xs'
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all ${
+                  riskFilter === tier.id
+                    ? 'bg-slate-800 text-white shadow-2xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {r.label}
+                {tier.label}
               </button>
             ))}
           </div>
 
-          {/* Search Form & Sort Selector */}
-          <div className="flex flex-wrap items-center gap-3">
-            <form onSubmit={handleSearchSubmit} className="relative flex-1 sm:w-64">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          {/* Search, Sort, and Editable Page Jump Box */}
+          <div className="flex flex-wrap items-center gap-2">
+            <form onSubmit={handleSearchSubmit} className="relative flex-1 min-w-[200px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
               <input
                 type="text"
-                placeholder="Search ID, Name, DOB, Specialty, Diagnosis..."
+                placeholder="Search ID, Name, DOB, Specialty..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-[#12213A]"
+                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:border-[#12213A]"
               />
             </form>
 
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1">
-              <ArrowUpDown className="w-3.5 h-3.5 text-slate-500" />
-              <select
-                value={sortBy}
-                onChange={(e) => {
-                  setSortBy(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="bg-transparent text-xs font-medium text-slate-700 focus:outline-none"
-              >
-                <option value="RISK_DESC">Highest Risk First</option>
-                <option value="RISK_ASC">Lowest Risk First</option>
-                <option value="STAY_DESC">Longest Stay First</option>
-                <option value="STAY_ASC">Shortest Stay First</option>
-                <option value="NEWEST">Newest Patient</option>
-                <option value="OLDEST">Oldest Patient</option>
-              </select>
-            </div>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="bg-slate-50 border border-slate-200 rounded-lg p-1.5 font-medium text-slate-700 focus:outline-none"
+            >
+              <option value="RISK_DESC">Highest Risk First</option>
+              <option value="RISK_ASC">Lowest Risk First</option>
+              <option value="STAY_DESC">Longest Stay First</option>
+              <option value="STAY_ASC">Shortest Stay First</option>
+              <option value="NEWEST">Newest Records</option>
+              <option value="OLDEST">Oldest Records</option>
+            </select>
 
             {/* Editable Page Jump Box */}
             <form onSubmit={handlePageJumpSubmit} className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 border border-slate-200 rounded-lg">
@@ -410,6 +426,8 @@ export const WardOverview: React.FC<WardOverviewProps> = ({ onSelectPatient }) =
               key={patient.patient_id}
               patient={patient}
               onSelect={(p) => (onSelectPatient ? onSelectPatient(p) : setSelectedPatient(p))}
+              canDelete={canDeletePatients}
+              onDelete={handleDeletePatient}
             />
           ))}
         </div>

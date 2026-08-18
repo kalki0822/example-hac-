@@ -309,3 +309,92 @@ def get_patient_shap(
         "patient_id": patient.patient_id,
         "drivers": drivers
     }
+
+@router.delete("/{patient_id_param}")
+def delete_patient_record(
+    patient_id_param: str,
+    db: Session = Depends(get_db)
+):
+    """Deletes a patient record and all dependent predictions/SHAP explanations."""
+    from api.models_db import PreventiveActionRecord
+    patient = db.query(Patient).filter(
+        or_(
+            Patient.patient_id == patient_id_param,
+            Patient.id == int(patient_id_param) if patient_id_param.isdigit() else False
+        )
+    ).first()
+
+    if not patient:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Patient record '{patient_id_param}' not found."
+        )
+
+    deleted_ref = patient.patient_id
+    p_id = patient.id
+
+    preds = db.query(Prediction).filter(Prediction.patient_id == p_id).all()
+    pred_ids = [p.id for p in preds]
+
+    if pred_ids:
+        db.query(SHAPExplanation).filter(SHAPExplanation.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+        db.query(PreventiveActionRecord).filter(PreventiveActionRecord.prediction_id.in_(pred_ids)).delete(synchronize_session=False)
+        db.query(Prediction).filter(Prediction.id.in_(pred_ids)).delete(synchronize_session=False)
+
+    db.query(Patient).filter(Patient.id == p_id).delete(synchronize_session=False)
+    db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Patient record '{deleted_ref}' successfully deleted.",
+        "patient_id": deleted_ref
+    }
+
+@router.get("/export/csv")
+def export_patients_csv(
+    source: Optional[str] = Query("ALL"),
+    risk_tier: Optional[str] = Query("ALL"),
+    db: Session = Depends(get_db)
+):
+    """Exports patient readmission data as downloadable CSV."""
+    from fastapi.responses import Response
+
+    query = db.query(Patient, Prediction).join(Prediction, Prediction.patient_id == Patient.id)
+
+    if source and source.upper() != "ALL":
+        query = query.filter(Patient.source == source.upper())
+
+    if risk_tier and risk_tier.upper() != "ALL":
+        r_up = risk_tier.upper()
+        if "HIGH" in r_up:
+            rt_norm = "High Risk"
+        elif "ELEVATED" in r_up:
+            rt_norm = "Elevated Risk"
+        elif "MODERATE" in r_up:
+            rt_norm = "Moderate Risk"
+        else:
+            rt_norm = "Minimal Risk"
+        query = query.filter(Prediction.risk_tier == rt_norm)
+
+    rows = query.order_by(desc(Prediction.probability), asc(Patient.id)).all()
+
+    csv_lines = [
+        "Patient ID,Patient Name,Date of Birth,Source,Age Bracket,Medical Specialty,Hospital Stay (Days),Diag 1,Diag 2,Diag 3,Calibrated Probability,Risk Tier,Operating Threshold,Model Version"
+    ]
+
+    for p, pred in rows:
+        name = (p.patient_name or "N/A").replace(",", " ")
+        dob = (p.date_of_birth or "N/A").replace(",", " ")
+        spec = (p.medical_specialty or "General").replace(",", " ")
+        prob_str = f"{(pred.probability * 100):.2f}%"
+        tier = pred.risk_tier
+        line = f'"{p.patient_id}","{name}","{dob}","{p.source}","{p.age}","{spec}",{p.time_in_hospital},"{p.diag_1}","{p.diag_2}","{p.diag_3}","{prob_str}","{tier}",{pred.operating_threshold},"{pred.model_version}"'
+        csv_lines.append(line)
+
+    csv_content = "\n".join(csv_lines)
+    return Response(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=vitals_ward_discharge_export.csv"}
+    )
+

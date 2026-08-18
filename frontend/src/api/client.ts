@@ -147,8 +147,8 @@ export async function fetchThresholdAnalysis(): Promise<any> {
   return res.json();
 }
 
-export async function fetchAuditLogs(limit: number = 100): Promise<any[]> {
-  const res = await fetch(`${API_BASE_URL}/api/v1/audit/predictions?limit=${limit}`, {
+export async function fetchAuditLogs(limit: number = 100, source: string = 'ALL'): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/audit/predictions?limit=${limit}&source=${encodeURIComponent(source)}`, {
     headers: { ...getAuthHeaders() }
   });
   if (res.status === 401) {
@@ -164,6 +164,38 @@ export async function fetchAuditLogs(limit: number = 100): Promise<any[]> {
   return res.json();
 }
 
+export async function deletePredictionAuditRecord(predictionId: number): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/audit/predictions/${predictionId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to delete prediction record #${predictionId}.`);
+  }
+  return res.json();
+}
+
+export async function downloadAuditLogsCSV(source: string = 'ALL'): Promise<void> {
+  const url = `${API_BASE_URL}/api/v1/audit/export/csv?source=${encodeURIComponent(source)}`;
+  const res = await fetch(url, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    throw new Error('Failed to download prediction audit log CSV report.');
+  }
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = `vitals_prediction_audit_log_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
+
 export async function fetchDashboardSummary(): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/api/v1/dashboard/summary`, {
     headers: { ...getAuthHeaders() }
@@ -171,3 +203,84 @@ export async function fetchDashboardSummary(): Promise<any> {
   if (!res.ok) return null;
   return res.json();
 }
+
+export async function registerUser(userData: { email: string; password: string; full_name: string; role?: string }): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData)
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Registration failed.');
+  }
+  return res.json();
+}
+
+export async function fetchUsers(): Promise<any[]> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/users`, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) return [];
+  return res.json();
+}
+
+export async function adminCreateUser(userData: { email: string; password: string; full_name: string; role: string }): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/users`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(userData)
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to create user account.');
+  }
+  return res.json();
+}
+
+export async function deleteUser(userId: number): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/auth/users/${userId}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to delete user account.');
+  }
+  return res.json();
+}
+
+export async function deletePatient(patientId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/api/v1/patients/${encodeURIComponent(patientId)}`, {
+    method: 'DELETE',
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to delete patient record ${patientId}.`);
+  }
+  return res.json();
+}
+
+export async function downloadPatientsCSV(source: string = 'ALL', riskTier: string = 'ALL'): Promise<void> {
+  const url = `${API_BASE_URL}/api/v1/patients/export/csv?source=${encodeURIComponent(source)}&risk_tier=${encodeURIComponent(riskTier)}`;
+  const res = await fetch(url, {
+    headers: { ...getAuthHeaders() }
+  });
+  if (!res.ok) {
+    throw new Error('Failed to download CSV patient report.');
+  }
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = downloadUrl;
+  a.download = `vitals_ward_discharge_report_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}
+

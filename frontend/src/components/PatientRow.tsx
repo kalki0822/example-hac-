@@ -1,15 +1,23 @@
 import React from 'react';
 import { BatchPatientResult } from '../types';
 import { ScoreGauge } from './ScoreGauge';
-import { ChevronRight, Clock, ShieldAlert, User, Calendar } from 'lucide-react';
+import { ChevronRight, Clock, ShieldAlert, User, Calendar, Trash2 } from 'lucide-react';
 
 interface PatientRowProps {
   patient: BatchPatientResult & Record<string, any>;
   threshold?: number;
   onSelect: (patient: BatchPatientResult) => void;
+  onDelete?: (patientId: string, e: React.MouseEvent) => void;
+  canDelete?: boolean;
 }
 
-export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2562, onSelect }) => {
+export const PatientRow: React.FC<PatientRowProps> = ({
+  patient,
+  threshold = 0.2562,
+  onSelect,
+  onDelete,
+  canDelete = false
+}) => {
   const patientData: Record<string, any> = patient.patient_data || patient;
   const patientId = patient.patient_id || patientData.patient_id || `PT-100${patient.patient_index || 1}`;
   const patientName = patient.patient_name || patientData.patient_name || 'N/A';
@@ -89,9 +97,21 @@ export const PatientRow: React.FC<PatientRowProps> = ({ patient, threshold = 0.2
         />
       </div>
 
-      {/* Trigger CTA */}
-      <div className="hidden sm:flex items-center justify-end text-slate-400 group-hover:text-[#12213A] transition-colors">
-        <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+      {/* Actions: Delete (Admin/Analyst) & Trigger Chevron CTA */}
+      <div className="flex items-center justify-end gap-2">
+        {canDelete && onDelete && (
+          <button
+            type="button"
+            onClick={(e) => onDelete(patientId, e)}
+            className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 rounded transition-colors"
+            title={`Delete patient record ${patientId}`}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
+        <div className="hidden sm:flex items-center text-slate-400 group-hover:text-[#12213A] transition-colors">
+          <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform" />
+        </div>
       </div>
     </div>
   );

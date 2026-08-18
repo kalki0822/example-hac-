@@ -1,25 +1,28 @@
 import React, { useEffect, useState } from 'react';
-import { fetchAuditLogs } from '../api/client';
+import { fetchAuditLogs, deletePredictionAuditRecord, downloadAuditLogsCSV } from '../api/client';
 import { useAuth } from '../context/AuthContext';
-import { FileText, RefreshCw, AlertCircle, LogIn, Clock } from 'lucide-react';
+import { FileText, RefreshCw, AlertCircle, LogIn, Clock, Download, Trash2, Filter, CheckCircle } from 'lucide-react';
 
 export const AuditView: React.FC = () => {
   const { logout } = useAuth();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [successInfo, setSuccessInfo] = useState<string | null>(null);
   const [isAuthError, setIsAuthError] = useState<boolean>(false);
+  const [sourceFilter, setSourceFilter] = useState<string>('ALL'); // ALL, MANUAL, UPLOADED_CSV, KAGGLE
+  const [downloadingCsv, setDownloadingCsv] = useState<boolean>(false);
 
   useEffect(() => {
     loadLogs();
-  }, []);
+  }, [sourceFilter]);
 
   const loadLogs = async () => {
     setLoading(true);
     setError(null);
     setIsAuthError(false);
     try {
-      const data = await fetchAuditLogs(100);
+      const data = await fetchAuditLogs(100, sourceFilter);
       setLogs(data);
     } catch (err: any) {
       console.error('Failed to load prediction audit records:', err);
@@ -33,28 +36,107 @@ export const AuditView: React.FC = () => {
     }
   };
 
+  const handleDeleteAuditRecord = async (logId: number, patientRef: string) => {
+    if (!window.confirm(`Are you sure you want to delete prediction audit record #${logId} (Patient '${patientRef}') from PostgreSQL?`)) {
+      return;
+    }
+
+    try {
+      await deletePredictionAuditRecord(logId);
+      setSuccessInfo(`Prediction audit record #${logId} (${patientRef}) deleted successfully.`);
+      await loadLogs();
+    } catch (err: any) {
+      alert(err.message || `Failed to delete prediction record #${logId}`);
+    }
+  };
+
+  const handleDownloadCSV = async () => {
+    setDownloadingCsv(true);
+    try {
+      await downloadAuditLogsCSV(sourceFilter);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download prediction audit log CSV report.');
+    } finally {
+      setDownloadingCsv(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
+      {/* Top Header Banner */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-slate-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2">
             <FileText className="w-5 h-5 text-indigo-700" />
             <h1 className="text-xl font-bold font-display text-[#12213A]">Prediction Audit Log</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Prediction history and decision trace
+            Prediction history, decision trace, manual patient records, and audit record deletion.
           </p>
         </div>
 
-        <button
-          onClick={loadLogs}
-          disabled={loading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-[#12213A] text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Download CSV Report Button */}
+          <button
+            onClick={handleDownloadCSV}
+            disabled={downloadingCsv}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold rounded-lg transition-colors shadow-2xs"
+            title="Download prediction audit log as CSV file"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>{downloadingCsv ? 'Downloading...' : 'Download Audit CSV'}</span>
+          </button>
+
+          <button
+            onClick={loadLogs}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-[#12213A] text-xs font-semibold rounded-lg border border-slate-200 transition-colors"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Success Banner */}
+      {successInfo && (
+        <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs flex items-center justify-between shadow-2xs">
+          <div className="flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span className="font-medium">{successInfo}</span>
+          </div>
+          <button onClick={() => setSuccessInfo(null)} className="text-emerald-700 font-bold hover:text-emerald-900">×</button>
+        </div>
+      )}
+
+      {/* Source Filter Tabs */}
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-slate-500" />
+          <span className="font-bold text-slate-700">Filter Audit History:</span>
+          <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+            {[
+              { id: 'ALL', label: 'All Prediction Logs' },
+              { id: 'MANUAL', label: 'Manual Intake Patients Only (PT-MAN-...)' },
+              { id: 'UPLOADED_CSV', label: 'Uploaded CSV Files' },
+              { id: 'KAGGLE', label: 'Kaggle Baseline' }
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setSourceFilter(tab.id)}
+                className={`px-3 py-1 rounded-md font-semibold transition-all ${
+                  sourceFilter === tab.id
+                    ? 'bg-[#12213A] text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <span className="font-mono text-slate-500 font-semibold">{logs.length} Records</span>
       </div>
 
       {/* 401 Session Expired State */}
@@ -114,6 +196,7 @@ export const AuditView: React.FC = () => {
                   <th className="p-3">Model Version</th>
                   <th className="p-3">Drivers / Actions</th>
                   <th className="p-3">Timestamp</th>
+                  <th className="p-3 text-center">Delete</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-mono">
@@ -128,6 +211,7 @@ export const AuditView: React.FC = () => {
                       <td className="p-3"><div className="h-4 bg-slate-100 rounded w-24"></div></td>
                       <td className="p-3"><div className="h-4 bg-slate-100 rounded w-28"></div></td>
                       <td className="p-3"><div className="h-4 bg-slate-100 rounded w-32"></div></td>
+                      <td className="p-3"><div className="h-4 bg-slate-100 rounded w-12 mx-auto"></div></td>
                     </tr>
                   ))
                 ) : logs.length > 0 ? (
@@ -170,14 +254,25 @@ export const AuditView: React.FC = () => {
                             <span>{log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}</span>
                           </div>
                         </td>
+                        {/* Row Level Delete Symbol Button */}
+                        <td className="p-3 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteAuditRecord(log.id, log.patient_reference || `PT-${log.id}`)}
+                            className="p-1.5 text-slate-400 hover:text-red-700 hover:bg-red-50 border border-transparent hover:border-red-200 rounded transition-colors inline-flex items-center justify-center"
+                            title={`Delete audit log record #${log.id} (${log.patient_reference})`}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-600" />
+                          </button>
+                        </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={8} className="p-12 text-center text-slate-500 font-sans space-y-2">
-                      <p className="text-sm font-semibold text-slate-700">No prediction audit records found.</p>
-                      <p className="text-xs text-slate-500">Run a prediction to create an audit entry.</p>
+                    <td colSpan={9} className="p-12 text-center text-slate-500 font-sans space-y-2">
+                      <p className="text-sm font-semibold text-slate-700">No prediction audit records found matching selected filter.</p>
+                      <p className="text-xs text-slate-500">Run a manual intake prediction to generate entries.</p>
                     </td>
                   </tr>
                 )}
